@@ -1,16 +1,17 @@
+#[derive(Debug, Clone)]
 enum Token {
     Keyword(Keyword),
     Symbol(Symbol),
     Literal(String),
 }
 
-
+#[derive(Debug, Clone, Copy)]
 enum Symbol {
     StartArray,
     EndArray
 }
 
-
+#[derive(Debug, Clone, Copy)]
 enum Keyword {
     IN,
     OUT,
