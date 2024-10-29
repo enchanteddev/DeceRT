@@ -5,3 +5,10 @@ version = 3
 [[package]]
 name = "DeceRT"
 version = "0.1.0"
+dependencies = [
+ "confparse",
+]
+
+[[package]]
+name = "confparse"
+version = "0.1.0"
