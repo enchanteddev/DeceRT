@@ -1,20 +1,20 @@
 use std::sync::Arc;
 
 #[derive(Debug, Clone)]
-enum Token {
+pub enum Token {
     Keyword(Keyword),
     Symbol(Symbol),
     Literal(Arc<str>),
 }
 
 #[derive(Debug, Clone, Copy)]
-enum Symbol {
+pub enum Symbol {
     StartArray,
     EndArray
 }
 
 #[derive(Debug, Clone, Copy)]
-enum Keyword {
+pub enum Keyword {
     IN,
     OUT,
     #[allow(non_camel_case_types)]
@@ -24,7 +24,7 @@ enum Keyword {
     SATISFIES,
 }
 
-fn parse(input: &str) -> Result<Vec<Token>, String> {
+pub fn parse(input: &str) -> Result<Vec<Token>, String> {
     let mut tokens = Vec::new();
     let lines = input.lines();
 
