@@ -1,21 +1,24 @@
 use std::sync::Arc;
 mod parse;
 
+#[derive(Debug, Clone)]
+pub struct Task {
+    pub name: Arc<str>,
+    pub args: Vec<Arc<str>>,
+    pub requires: Vec<Arc<str>>,
+    pub satisfies: Vec<Arc<str>>,
+    pub cycles: u16
+}
 
-struct Task {
-    name: Arc<str>,
-    args: Vec<Arc<str>>,
-    requires: Vec<Arc<str>>,
-    satisfies: Vec<Arc<str>>,
-    cycles: u16
+#[derive(Debug, Clone)]
+pub struct Conf {
+    pub inports: Vec<Arc<str>>,
+    pub outports: Vec<Arc<str>>,
+    pub initial: Vec<Arc<str>>,
+    pub tasks: Vec<Task>
 }
 
 
-struct Conf {
-    inports: Vec<Arc<str>>,
-    outports: Vec<Arc<str>>,
-    initial: Vec<Arc<str>>,
-    tasks: Vec<Task>
+pub fn get_conf(path: &str) -> Result<Conf, String> {
+    todo!()
 }
-
-
