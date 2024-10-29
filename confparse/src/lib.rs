@@ -1,6 +1,7 @@
 use crate::parse::Keyword;
 use crate::parse::Symbol;
 use crate::parse::Token;
+use std::fs::read_to_string;
 use std::sync::Arc;
 use std::vec;
 mod parse;
@@ -146,7 +147,7 @@ fn parse_tasks( tokens: &mut std::slice::Iter<'_, Token>) -> Result<Task, String
     Ok(task)
 }
 
-pub fn coder(tokens: Vec<Token>) -> Result<Conf, String>{
+fn coder(tokens: Vec<Token>) -> Result<Conf, String>{
     let mut tokens_iter: std::slice::Iter<'_, Token> = tokens.iter();
     let mut config = parse_conf(&mut tokens_iter)?;
     loop {
@@ -167,5 +168,7 @@ pub fn coder(tokens: Vec<Token>) -> Result<Conf, String>{
 
 }
 pub fn get_conf(path: &str) -> Result<Conf, String> {
-    todo!()
+    let content = read_to_string(path).map_err(|e| e.to_string())?;
+    let tokens = parse::parse(&content).map_err(|e| e.to_string())?;
+    coder(tokens)
 }

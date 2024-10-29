@@ -44,7 +44,7 @@ pub fn add_obc(id: u32) -> io::Result<()> {
     port_file.write(
         b"// not to be touched by user\n// will be regenerated to ensure correctness on each build",
     )?;
-    File::create(format!("tasks.conf"))?;
+    File::create(format!("obc{id}/tasks.conf"))?;
     Ok(())
 }
 
