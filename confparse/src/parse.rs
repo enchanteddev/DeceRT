@@ -5,13 +5,13 @@ pub enum Token {
     Literal(String),
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Symbol {
     StartArray,
     EndArray
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Keyword {
     IN,
     OUT,
