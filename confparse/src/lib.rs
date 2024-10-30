@@ -125,7 +125,7 @@ fn parse_tasks( tokens: &mut std::slice::Iter<'_, Token>) -> Result<Task, String
     let Token::Literal(x) = token else {
         Err("Task Name Expected")?
     };
-    task.name = <String as Into<Arc<str>>>::into(x);
+    task.name = <String as Into<Arc<str>>>::into(x.to_string());
     populate(&mut task.args, tokens)?;
     // 
 
