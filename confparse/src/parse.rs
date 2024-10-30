@@ -1,8 +1,10 @@
+use std::sync::Arc;
+
 #[derive(Debug, Clone)]
 pub enum Token {
     Keyword(Keyword),
     Symbol(Symbol),
-    Literal(String),
+    Literal(Arc<str>),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -108,7 +110,7 @@ pub fn parse(input: &str) -> Result<Vec<Token>, String> {
                     .map(|f| Token::Literal(f.trim().into())),
             );
             tokens.push(Token::Symbol(Symbol::EndArray));
-            tokens.push(Token::Literal(cycle.to_string()));
+            tokens.push(Token::Literal(cycle.to_string().into()));
         }
     }
     Ok(tokens)

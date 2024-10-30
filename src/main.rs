@@ -29,6 +29,12 @@ fn main() {
                 Err(e) => println!("Error: {}", e),
             };
         },
+        "update-tasks" => {
+            match cli::update_tasks() {
+                Ok(_) => println!("Tasks updated"),
+                Err(e) => println!("Error: {}", e),
+            };
+        }
         _ => println!("Unknown command"),
     }
 }

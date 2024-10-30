@@ -5,19 +5,21 @@ use std::sync::Arc;
 use std::vec;
 mod parse;
 
-struct Task {
-    name: Arc<str>,
-    args: Vec<Arc<str>>,
-    requires: Vec<Arc<str>>,
-    satisfies: Vec<Arc<str>>,
-    cycles: u16,
+#[derive(Debug, Clone)]
+pub struct Task {
+    pub name: Arc<str>,
+    pub args: Vec<Arc<str>>,
+    pub requires: Vec<Arc<str>>,
+    pub satisfies: Vec<Arc<str>>,
+    pub cycles: u16
 }
 
-struct Conf {
-    inports: Vec<Arc<str>>,
-    outports: Vec<Arc<str>>,
-    initial: Vec<Arc<str>>,
-    tasks: Vec<Task>,
+#[derive(Debug, Clone)]
+pub struct Conf {
+    pub inports: Vec<Arc<str>>,
+    pub outports: Vec<Arc<str>>,
+    pub initial: Vec<Arc<str>>,
+    pub tasks: Vec<Task>
 }
 
 fn parse_keyword(next_token: Token, keyword_type: Keyword) -> Result<(), String> {
@@ -163,4 +165,7 @@ pub fn coder(tokens: Vec<Token>) -> Result<Conf, String>{
     }
     Ok(config)
 
+}
+pub fn get_conf(path: &str) -> Result<Conf, String> {
+    todo!()
 }
