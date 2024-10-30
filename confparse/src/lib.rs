@@ -114,8 +114,12 @@ fn parse_tasks( tokens: &mut std::slice::Iter<'_, Token>) -> Result<Task, String
         Ok(token) => token,
         Err(_) => Err("EMPTY")? // TODO: to later convert all thses errors to ENUMS
     };
-    parse_keyword(token.clone(), Keyword::REQUIRES)?;
-    populate(&mut task.requires, tokens)?;
+    match parse_keyword(token.clone(), Keyword::REQUIRES){
+        Ok(val) => {
+            populate(&mut task.requires, tokens)?;
+        },
+        Err(_) => {}
+    };
     //
 
     token = get_token(tokens)?;
@@ -140,8 +144,12 @@ fn parse_tasks( tokens: &mut std::slice::Iter<'_, Token>) -> Result<Task, String
 
     // satisfies
     token = get_token(tokens)?;
-    parse_keyword(token.clone(), Keyword::SATISFIES)?;
-    populate(&mut task.satisfies, tokens)?;
+    match parse_keyword(token.clone(), Keyword::SATISFIES){
+        Ok(val) => {
+            populate(&mut task.requires, tokens)?;
+        },
+        Err(_) => {}
+    };
     //
     
     Ok(task)
