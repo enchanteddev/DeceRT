@@ -1,9 +1,8 @@
 use std::{
-    fs::{self, create_dir, File},
-    io::{self, Write},
-    path::Path,
+    collections::HashMap, env::{current_dir, set_current_dir}, fs::{self, create_dir, File}, io::{self, Write}, path::Path
 };
 
+use confparse::Conf;
 use itertools::Itertools;
 
 fn write_input_port(port_name: &str, ports_hpp: &mut File) -> io::Result<()> {
@@ -50,7 +49,7 @@ pub fn add_obc(id: u32) -> io::Result<()> {
     Ok(())
 }
 
-pub fn update_tasks() -> Result<(), String> {
+pub fn update_tasks() -> Result<Conf, String> {
     let conf = confparse::get_conf("tasks.conf")?;
 
     let mut ports_hpp = fs::OpenOptions::new()
@@ -63,19 +62,18 @@ pub fn update_tasks() -> Result<(), String> {
         b"// not to be touched by user\n// will be regenerated to ensure correctness on each build\n",
     ).map_err(|e| e.to_string())?;
 
-    for inports in conf.inports {
+    for inports in conf.inports.iter() {
         write_input_port(&inports, &mut ports_hpp).map_err(|e| e.to_string())?;
     }
-    for outports in conf.outports {
+    for outports in conf.outports.iter() {
         write_output_port(&outports, &mut ports_hpp).map_err(|e| e.to_string())?;
     }
 
     let sensors = conf.tasks.iter().flat_map(|x| x.args.clone()).unique();
-    
+
     for sensor in sensors {
         write_sensor(&sensor, &mut ports_hpp).map_err(|e| e.to_string())?;
     }
-
 
     let task_snippet = include_str!("../cpp_snippets/task.cpp");
 
@@ -86,12 +84,18 @@ pub fn update_tasks() -> Result<(), String> {
             Err(e) => return Err(e.to_string()),
         };
 
-        let task_code = task_snippet
-            .replace("TASKNAME", &task.name)
-            .replace("ARGS", &task.args.iter().map(|x| {
-                let first3lower = x[..3].to_lowercase();
-                format!("{x} {first3lower}")
-            }).collect::<Vec<String>>().join(", "));
+        let task_code = task_snippet.replace("TASKNAME", &task.name).replace(
+            "ARGS",
+            &task
+                .args
+                .iter()
+                .map(|x| {
+                    let first3lower = x[..3].to_lowercase();
+                    format!("{x} {first3lower}")
+                })
+                .collect::<Vec<String>>()
+                .join(", "),
+        );
 
         file.write(task_code.as_bytes())
             .map_err(|e| e.to_string())?;
@@ -106,11 +110,58 @@ pub fn update_tasks() -> Result<(), String> {
         }
     }
 
-    Ok(())
+    Ok(conf)
 }
 
+fn precompilation() -> io::Result<HashMap<u32, Conf>> {
+    let is_root = Path::new("./sensors.json").exists();
+    if !is_root {
+        return Err(io::Error::new(
+            io::ErrorKind::Other,
+            "Not in project's root directory",
+        ));
+    }
 
+    let mut obc_ids = Vec::new();
 
-fn precompilation() -> io::Result<()> {
-    Ok(())
+    for dir in Path::new(".").read_dir()? {
+        let dir = dir?;
+        let path = dir.path();
+        if path.is_dir() {
+            let Some(last_component_osstr) = path.components().last() else {
+                continue;
+            };
+            let Some(last_component) = last_component_osstr.as_os_str().to_str() else {
+                continue;
+            };
+            let Some(obc_id_str) = last_component.strip_prefix("obc") else {
+                println!("Non obc folder found: {path:?}");
+                continue;
+            };
+            
+            let obc_id = obc_id_str.parse::<u32>().map_err(|e| io::Error::new(
+                io::ErrorKind::Other,
+                e,
+            ))?;
+
+            obc_ids.push(obc_id);
+        }
+    }
+
+    let root_dir = current_dir()?;
+
+    let mut topology = HashMap::new();
+
+    for obc_id in obc_ids {
+        set_current_dir(root_dir.join(Path::new(&format!("obc{obc_id}/"))))?;
+        let conf = update_tasks().map_err(|e| io::Error::new(
+            io::ErrorKind::Other,
+            e,
+        ))?;
+        topology.insert(obc_id, conf);
+    }
+
+    set_current_dir(root_dir)?;
+
+    Ok(topology)
 }
