@@ -6,7 +6,7 @@ use std::sync::Arc;
 use std::vec;
 mod parse;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Task {
     pub name: Arc<str>,
     pub args: Vec<Arc<str>>,

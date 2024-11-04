@@ -2,73 +2,58 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs;
 use std::hash::{Hash, Hasher};
+use std::ops::{Deref, DerefMut};
 use std::path::Path;
 use std::sync::Arc;
 
 #[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Eq)]
 pub struct Sensor {
-    pub sensor_type: String,
     pub sensor_name: String,
+    pub from_address: String,
+    pub to_address: String
 }
 
-impl Sensor {
-    fn from_name(name: &str, sensors_map: &HashMap<String, Sensor> ) -> Sensor {
-        sensors_map.get(name).expect("Sensor not found").clone()
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Task (confparse::Task);
+
+
+impl Deref for Task {
+    type Target = confparse::Task;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
     }
 }
 
-#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Eq)]
-pub struct Task {
-    pub fn_identifier: String,
-    pub call_time_ms: u64,
-    pub args: Vec<Sensor>,
-    pub satisfies: Option<Vec<String>>,
-    pub requires: Option<Vec<String>>,
+impl DerefMut for Task {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
 }
+
 
 impl Hash for Task {
     fn hash<H: Hasher>(&self, state: &mut H) {
-        self.fn_identifier.hash(state);
+        self.0.name.hash(state);
     }
 }
 
 impl Task {
-    pub fn new(
-        fn_identifier: String,
-        call_time_ms: u64,
-        args: Vec<String>,
-        satisfies: Option<Vec<String>>,
-        requires: Option<Vec<String>>,
-        sensors_map: &HashMap<String, Sensor>,
-    ) -> Self {
-        let resolved_args = args
-            .into_iter()
-            .map(|name| Sensor::from_name(&name, sensors_map))
-            .collect();
-        Task {
-            fn_identifier,
-            call_time_ms,
-            args: resolved_args,
-            satisfies,
-            requires,
-        }
+    pub fn new(task: confparse::Task) -> Task {
+        Task(task)
     }
 }
 
-#[derive(Debug, Deserialize, Serialize)]
-pub struct OBCInfo {
-    pub cpu_id: u32,
-    pub tasks: Vec<Task>,
-}
-
-#[derive(Debug, Deserialize, Serialize)]
-pub struct Topology {
-    pub cpus: Vec<OBCInfo>,
+#[derive(Deserialize, Serialize)]
+struct SensorJson {
+    sensors: Vec<Sensor>,
+    ports: Vec<String>,
 }
 
 pub fn load_sensors<P: AsRef<Path>>(path: P) -> HashMap<String, Arc<Sensor>> {
     let data = fs::read_to_string(path).expect("Failed to read sensors.json");
-    let sensor_list: Vec<Sensor> = serde_json::from_str(&data).expect("Invalid JSON format");
+    let sensorjson: SensorJson = serde_json::from_str(&data).expect("Invalid JSON format");
+    let sensor_list = sensorjson.sensors;
     sensor_list
         .into_iter()
         .map(|sensor| (sensor.sensor_name.clone(), Arc::new(sensor)))
