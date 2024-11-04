@@ -5,4 +5,5 @@ edition = "2021"
 
 [dependencies]
 confparse = {path = "./confparse"}
+decert_scheduler = {path = "./decert_scheduler"}
 itertools = "0.13.0"
