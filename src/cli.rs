@@ -1,7 +1,7 @@
 use std::{
     fs::{self, create_dir, File},
     io::{self, Write},
-    path::Path, sync::Arc,
+    path::Path,
 };
 
 use itertools::Itertools;
