@@ -108,3 +108,9 @@ pub fn update_tasks() -> Result<(), String> {
 
     Ok(())
 }
+
+
+
+fn precompilation() -> io::Result<()> {
+    Ok(())
+}
