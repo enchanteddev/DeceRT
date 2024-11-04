@@ -26,7 +26,7 @@ pub struct Conf {
 fn parse_keyword(next_token: Token, keyword_type: Keyword) -> Result<(), String> {
     // Errors if keyword_type does not matches
     let Token::Keyword(x) = next_token else {
-        Err(format!("Not Keyword : {next_token:?}").to_string())?
+        Err(format!("Not Keyword: {next_token:?}, expected: {keyword_type:?}").to_string())?
     };
     if x != keyword_type {
         Err(format!("Different type keyword, expected : {keyword_type:?} , got: {next_token:?}").to_string())?
@@ -117,12 +117,12 @@ fn parse_tasks( tokens: &mut std::slice::Iter<'_, Token>) -> Result<Task, String
     match parse_keyword(token.clone(), Keyword::REQUIRES){
         Ok(val) => {
             populate(&mut task.requires, tokens)?;
+            token = get_token(tokens)?;
         },
         Err(_) => {}
     };
     //
 
-    token = get_token(tokens)?;
     parse_keyword(token.clone(), Keyword::TASK)?;
     
     // task name

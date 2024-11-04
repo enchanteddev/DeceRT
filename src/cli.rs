@@ -1,8 +1,10 @@
 use std::{
     fs::{self, create_dir, File},
     io::{self, Write},
-    path::Path,
+    path::Path, sync::Arc,
 };
+
+use itertools::Itertools;
 
 fn write_input_port(port_name: &str, ports_hpp: &mut File) -> io::Result<()> {
     let input_port_snippet = include_str!("../cpp_snippets/input_port.cpp");
@@ -54,7 +56,7 @@ pub fn update_tasks() -> Result<(), String> {
     let mut ports_hpp = fs::OpenOptions::new()
         .create(true)
         .write(true)
-        .open("port.hpp")
+        .open("ports.hpp")
         .map_err(|e| e.to_string())?;
 
     ports_hpp.write(
@@ -67,10 +69,18 @@ pub fn update_tasks() -> Result<(), String> {
     for outports in conf.outports {
         write_output_port(&outports, &mut ports_hpp).map_err(|e| e.to_string())?;
     }
+
+    let sensors = conf.tasks.iter().flat_map(|x| x.args.clone()).unique();
+    
+    for sensor in sensors {
+        write_sensor(&sensor, &mut ports_hpp).map_err(|e| e.to_string())?;
+    }
+
+
     let task_snippet = include_str!("../cpp_snippets/task.cpp");
 
     for task in &conf.tasks {
-        let mut file = match File::create_new(format!("/entry/{}.cpp", task.name)) {
+        let mut file = match File::create_new(format!("entry/{}.cpp", task.name)) {
             Ok(x) => x,
             Err(e) if e.kind() == io::ErrorKind::AlreadyExists => continue,
             Err(e) => return Err(e.to_string()),
@@ -78,15 +88,18 @@ pub fn update_tasks() -> Result<(), String> {
 
         let task_code = task_snippet
             .replace("TASKNAME", &task.name)
-            .replace("ARGS", &task.args.join(", "));
+            .replace("ARGS", &task.args.iter().map(|x| {
+                let first3lower = x[..3].to_lowercase();
+                format!("{x} {first3lower}")
+            }).collect::<Vec<String>>().join(", "));
 
         file.write(task_code.as_bytes())
             .map_err(|e| e.to_string())?;
     }
 
     for file in Path::new("entry").read_dir().map_err(|e| e.to_string())? {
-        let file = file.map_err(|e| e.to_string())?;
-        let filename = file.file_name();
+        let file = file.map_err(|e| e.to_string())?.path();
+        let filename = file.file_stem().unwrap_or_default();
         let filename = filename.to_str().ok_or("Filename is not valid UTF-8")?;
         if !conf.tasks.iter().any(|f| &*f.name == filename) {
             Err(format!("'{filename}' is not the name of any task."))?
