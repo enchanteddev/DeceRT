@@ -33,7 +33,7 @@ impl Hash for Task {
 }
 
 impl Task {
-    fn new(
+    pub fn new(
         fn_identifier: String,
         call_time_ms: u64,
         args: Vec<String>,

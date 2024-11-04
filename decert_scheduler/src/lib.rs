@@ -1,12 +1,16 @@
 use std::collections::{HashMap, HashSet};
+use std::path::PathBuf;
+use codewriter::CodeWriter;
 use serde_json::from_str;
 use crate::models::load_sensors;
 use crate::models::Task;
 use crate::scheduler::{DictBitMask, schedule};
-use  crate::cpu::{CPU, get_next_tasks};
+use crate::cpu::{CPU, get_next_tasks};
+use crate::codewriter::FunctionCall;
 mod scheduler;
 mod models;
 mod cpu;
+mod codewriter;
 
 
 fn main() {
@@ -40,11 +44,13 @@ fn main() {
     let mut next_tasks = get_next_tasks(&cpus, &cpus_bit_mask, &sbm);
     let mut cpu_scheduled_tasks: HashMap<String, Option<Task>> = HashMap::new();
     let mut output = Vec::new();
+
     while !next_tasks.is_empty() {
         let mut new_task_added = false;
         let task2cpu: HashMap<String, String> = next_tasks
             .iter()
-            .filter_map(|(cpuname, task)| task.as_ref().map(|t| (t.fn_identifier.clone(), cpuname.clone())))
+            .filter_map(|(cpuname, task)| 
+            task.as_ref().map(|t| (t.fn_identifier.clone(), cpuname.clone().to_string())))
             .collect();
 
         for (cpuname, task) in &next_tasks {
@@ -77,12 +83,13 @@ fn main() {
     // CodeWriter and time tracking
     let mut cpu_cw: HashMap<String, CodeWriter> = cpu_keys
         .iter()
-        .map(|cpu_id| (cpu_id.clone(), CodeWriter::new(&format!("CPU{}", cpu_id))))
+        .map(|cpu_id| (cpu_id.clone(), CodeWriter::new(format!("CPU{}", cpu_id))))
         .collect();
 
     let time = 0;
     println!("{:?}", cpu_scheduled_tasks);
     for cpuname in cpus.keys() {
+
         let task = cpu_scheduled_tasks.get(cpuname).unwrap_or(&None);
         let cpu_writer = cpu_cw.get_mut(cpuname).unwrap();
         if task.is_none() {
@@ -99,6 +106,6 @@ fn main() {
 
     // Commit all CPU writers
     for (_, cpu_writer) in &cpu_cw {
-        cpu_writer.commit();
+        cpu_writer.commit(PathBuf::from("."));
     }
 }
