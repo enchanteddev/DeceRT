@@ -8,6 +8,10 @@ pub struct BitMap {
 }
 
 impl BitMap {
+    pub fn new() -> Self {
+        BitMap { map: 0 }
+    }
+    
     pub fn get(&self, index: u8) -> bool {
         self.map & (1 << index) == 1
     }
@@ -36,6 +40,10 @@ impl BitMap {
         }
     }
 
+    pub fn is_filled(&self, index: u8) -> bool {
+        self.map & ((1 << (index + 1)) - 1) == ((1 << (index + 1)) - 1)
+    }
+
     pub fn iter(&self) -> impl Iterator<Item = u8> + '_ {
         (0..128).filter(move |&i| self.get(i))
     }
@@ -62,6 +70,9 @@ fn task_schedule_rec(
     sensors_to_int: &HashMap<Arc<str>, u8>,
     sensors_used: BitMap,
 ) -> BitMap {
+    if sensors_used.is_filled(sensors_to_int.len() as u8) {
+        return BitMap { map: 0 };
+    }
     let Some((task, _)) = tasks.get(index as usize) else {
         return BitMap { map: 0 };
     };
