@@ -2,18 +2,32 @@ use crate::parse::Keyword;
 use crate::parse::Symbol;
 use crate::parse::Token;
 use std::fs::read_to_string;
+use std::ops::Deref;
+use std::ops::DerefMut;
 use std::sync::Arc;
 use std::vec;
 mod parse;
 
 #[derive(Debug, Clone, PartialEq, Eq, Ord, PartialOrd, Hash)]
-pub struct Task {
+pub struct Task_ {
     pub name: Arc<str>,
     pub args: Vec<Arc<str>>,
     pub requires: Vec<Arc<str>>,
     pub satisfies: Vec<Arc<str>>,
     pub cycles: u16
 }
+
+#[derive(Debug, Clone, PartialEq, Eq, Ord, PartialOrd, Hash)]
+pub struct Task(Arc<Task_>);
+
+impl Deref for Task {
+    type Target = Task_;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
 
 #[derive(Debug, Clone)]
 pub struct Conf {
@@ -101,7 +115,7 @@ fn parse_conf(tokens: &mut std::slice::Iter<'_, Token>) -> Result<Conf, String> 
 }
 
 fn parse_tasks( tokens: &mut std::slice::Iter<'_, Token>) -> Result<Task, String>{
-    let mut task = Task {
+    let mut task = Task_{
         name:"".into(),
         args:vec![],
         requires:vec![],
@@ -152,7 +166,7 @@ fn parse_tasks( tokens: &mut std::slice::Iter<'_, Token>) -> Result<Task, String
     };
     //
     
-    Ok(task)
+    Ok(Task(Arc::new(task)))
 }
 
 fn coder(tokens: Vec<Token>) -> Result<Conf, String>{
