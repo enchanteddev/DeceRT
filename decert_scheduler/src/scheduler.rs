@@ -60,7 +60,9 @@ pub fn task_schedule(
 ) -> Vec<Task> {
     task_schedule_rec(tasks, 0, sensors_to_int, sensors_used)
         .iter()
-        .map(|i| tasks[i as usize].0.clone())
+        .map(|i|{
+            tasks[i as usize].0.clone()  
+        })
         .collect()
 }
 

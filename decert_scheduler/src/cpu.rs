@@ -32,7 +32,7 @@ impl CPU {
         self.runnable_tasks.pop().map(|(_, task)| task)
     }
 
-    pub fn task_complete(&mut self, task: Task) {
+    pub fn task_complete(&mut self, task: &Task) {
         self.completed_tasks.insert(task.clone());
         for cond in &task.satisfies {
             self.satisfied.insert(cond.clone());
