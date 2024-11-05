@@ -1,11 +1,18 @@
-use std::collections::{BinaryHeap, HashMap};
+use std::{collections::{BinaryHeap, HashMap}, sync::Arc};
 
 use confparse::{Conf, Task};
 use cpu::{get_next_tasks, CPU};
+use scheduler::{task_schedule, BitMap};
 mod cpu;
+mod codewriter;
+mod scheduler;
+
+struct Sensors {
+    name: String
+}
 
 
-fn get_sensors() {
+fn get_sensors()-> Vec<Sensors>{
     /* reads sensor.json and creates a Vector of Sensors */
     todo!()
 }
@@ -18,6 +25,15 @@ pub fn schedule(topology:HashMap<u32,Conf>) -> Result<(), String> {
     }
     ).collect();
 
+    let sensors = get_sensors();
+
+
+    let sensors_to_int: HashMap<Arc<str>, u8> = sensors.iter().enumerate().map(|(loc, sensor)| {
+        (sensor.name.into(), loc as u8)
+    } ).collect(); // gives a map from sensor name to its location in sensors vector
+    let sensor_bitmap = BitMap{
+        
+    };
     let mut task2cpus: HashMap<Task,u32> = HashMap::new(); // task -> cpu_id
     let mut scheduled_tasks:BinaryHeap<(i32,Task)> = BinaryHeap::new(); // currently scheduled tasks
     let mut next_tasks: Vec<(Task, u8)>; // stores the next set of tasks to be scheduled
@@ -38,7 +54,7 @@ pub fn schedule(topology:HashMap<u32,Conf>) -> Result<(), String> {
         }).collect();
 
         
-
+        task_schedule(&next_tasks, sensors_to_int, sensors_used);
         
 
         // if empty then schduling completed
