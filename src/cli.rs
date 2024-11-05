@@ -3,6 +3,7 @@ use std::{
 };
 
 use confparse::Conf;
+use decert_scheduler::schedule;
 use itertools::Itertools;
 
 fn write_input_port(port_name: &str, ports_hpp: &mut File) -> io::Result<()> {
@@ -89,6 +90,7 @@ pub fn update_tasks() -> Result<Conf, String> {
             &task
                 .args
                 .iter()
+                .filter(|f| f.len() > 0)
                 .map(|x| {
                     let first3lower = x[..3].to_lowercase();
                     format!("{x} {first3lower}")
@@ -162,6 +164,13 @@ fn precompilation() -> io::Result<HashMap<u32, Conf>> {
     }
 
     set_current_dir(root_dir)?;
-
     Ok(topology)
+}
+
+
+
+pub fn compile() -> Result<(), String> {
+    let topology = precompilation().map_err(|e| e.to_string())?;
+    schedule(topology)?;
+    Ok(())
 }

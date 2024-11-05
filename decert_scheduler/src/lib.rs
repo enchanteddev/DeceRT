@@ -1,21 +1,39 @@
 use std::{
-    collections::{BinaryHeap, HashMap},
-    sync::Arc,
+    collections::{BinaryHeap, HashMap}, fs::read_to_string, path::PathBuf, sync::Arc
 };
 
 use codewriter::{CodeTask, CodeWriter, FunctionCall};
 use confparse::{Conf, Task};
 use cpu::{get_next_tasks, CPU};
 use scheduler::{task_schedule, BitMap};
+use serde::Deserialize;
 mod codewriter;
 mod cpu;
 mod scheduler;
 
+#[derive(Deserialize)]
 pub struct Sensors {
     name: Arc<str>,
+    from: Arc<str>,
+    to: Arc<str>,
 }
 
-pub fn schedule(topology: HashMap<u32, Conf>, sensors: Vec<Sensors>) -> Result<(), String> {
+#[derive(Deserialize)]
+pub struct SensorJson {
+    sensors: Vec<Sensors>,
+    ports: Vec<String>,
+}
+
+
+fn read_sensors() -> Result<SensorJson, String> {
+    let data = read_to_string("./sensors.json").map_err(|e| e.to_string())?;
+    let sensorjson: SensorJson = serde_json::from_str(&data).map_err(|e| e.to_string()).map_err(|e| e.to_string())?;
+    Ok(sensorjson)
+}
+
+
+pub fn schedule(topology: HashMap<u32, Conf>) -> Result<(), String> {
+    let sensors = read_sensors()?.sensors;
     let mut cpus: HashMap<u32, CPU> = topology
         .iter()
         .map(|entry| (*entry.0, CPU::new(*entry.0, entry.1.tasks.clone())))
@@ -118,6 +136,10 @@ pub fn schedule(topology: HashMap<u32, Conf>, sensors: Vec<Sensors>) -> Result<(
             }),
             time.into(),
         );
+    }
+    println!("Code written");
+    for (id, cpu_cw) in cpu_codewriter.iter_mut() {
+        cpu_cw.commit(PathBuf::from(format!("./dist/obc{id}")))?;
     }
     Ok(())
 }

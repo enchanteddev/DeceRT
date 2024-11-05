@@ -35,6 +35,12 @@ fn main() {
                 Err(e) => println!("Error: {}", e),
             };
         }
+        "compile" => {
+            match cli::compile() {
+                Ok(_) => println!("Compilation successful"),
+                Err(e) => println!("Error: {}", e),
+            };
+        }
         _ => println!("Unknown command"),
     }
 }

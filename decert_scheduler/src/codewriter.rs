@@ -1,5 +1,5 @@
 use std::{
-    fs::{self},
+    fs::{self, create_dir_all},
     io::Write,
     path::PathBuf,
     sync::Arc,
@@ -87,6 +87,8 @@ impl CodeWriter {
         }
         let entry_snippet = include_str!("../../cpp_snippets/obc.cpp");
         let final_code = entry_snippet.replace("__TASKS__", &tasks_string);
+
+        create_dir_all(&path);
 
         let mut entry_cpp = fs::OpenOptions::new()
             .create(true)
