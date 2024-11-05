@@ -1,7 +1,8 @@
-use std::{collections::{BinaryHeap, HashSet}, sync::Arc};
+use std::{collections::{BinaryHeap, HashMap, HashSet}, sync::Arc};
 
 use confparse::Task;
 
+#[derive(Clone)]
 pub struct CPU {
     pub id: u32,
     tasks: Vec<Task>,
@@ -49,4 +50,14 @@ impl CPU {
             }
         }
     }    
+}
+
+
+pub fn get_next_tasks(cpus: HashMap<u32, CPU>) -> HashMap<u32, Option<Task>> {
+    /* returns a HashMap of next tasks for the given list of cpus*/
+    let mut cpus_next_tasks:HashMap<u32,Option<Task>> = HashMap::new();
+    for (id,mut cpu) in cpus {
+        cpus_next_tasks.insert(id, cpu.get_task());
+    }
+    cpus_next_tasks
 }
