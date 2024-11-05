@@ -4,6 +4,13 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 use std::fmt;
 use std::sync::Arc;
+use std::cell::RefCell;
+use crate::models::Task;
+use crate::scheduler::DictBitMask;
+use std::cell::RefCell;
+use std::collections::HashMap;
+use std::fmt;
+use std::sync::Arc;
 
 pub struct CPU {
     pub id: i32,
@@ -29,7 +36,11 @@ impl CPU {
            Updates the currentTasks according to the satisfied tasks
            called in init and when updating the requirements in requirement_satisfied function
         */
+           Updates the currentTasks according to the satisfied tasks
+           called in init and when updating the requirements in requirement_satisfied function
+        */
         let mut to_remove = Vec::new();
+
 
         for task in &self.tasks {
             if task.requires.as_ref().map_or(true, |req| {
@@ -51,8 +62,15 @@ impl CPU {
            time complexity -> O()
         */
 
+           Checks the sensor_bit_mask and returns the next task which could be executed
+           on basis current statisfied requirements and free sensor.
+           return Null if can't find any
+           time complexity -> O()
+        */
+
         let mut to_remove = Vec::new();
         let mut to_return: Option<Task> = None;
+
 
         for task in &self.current_tasks {
             if task
@@ -94,10 +112,20 @@ pub fn get_next_tasks(
     cpus_bit_mask: &DictBitMask,
     sensor_bit_mask: &DictBitMask,
 ) -> HashMap<i32, Option<Task>> {
+pub fn get_next_tasks(
+    cpus: &mut HashMap<String, Arc<RefCell<CPU>>>,
+    cpus_bit_mask: &DictBitMask,
+    sensor_bit_mask: &DictBitMask,
+) -> HashMap<i32, Option<Task>> {
     let mut unutilized_cpus = HashMap::new();
+
 
     for (cpuname, _) in &cpus_bit_mask.sensors {
         let is_in_use = cpus_bit_mask.get(cpuname);
+        if is_in_use {
+            continue;
+        }
+
         if is_in_use {
             continue;
         }

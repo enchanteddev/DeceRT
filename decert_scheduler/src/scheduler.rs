@@ -62,13 +62,13 @@ impl DictBitMask {
 
 // Check if all sensors required by the task are available in the DictBitMask
 pub fn is_sensor_available(task: &Task, sbm: &DictBitMask) -> bool {
-    task.args.iter().all(|sensor| !sbm.get(&sensor.sensor_name))
+    task.args.iter().all(|sensor| !sbm.get(&sensor))
 }
 
 // Set or clear sensors in the DictBitMask according to the task’s requirements
 pub fn set_sensors(task: &Task, sbm: &mut DictBitMask, value: bool) {
     for sensor in &task.args {
-        sbm.set(&sensor.sensor_name, value);
+        sbm.set(&sensor, value);
     }
 }
 
@@ -96,7 +96,7 @@ pub fn schedule(
                 // Remove conflicting tasks and clear their sensors
                 let mut to_remove = Vec::new();
                 for task in &tasks {
-                    if task.args.iter().any(|s| &s.sensor_name == sensor) {
+                    if task.args.iter().any(|s| *s == (*sensor.clone()).into()) {
                         if &task_list[first_task_index] != task {
                             to_remove.push(task.clone());
                             set_sensors(task, &mut current_sbm, false);

@@ -19,6 +19,7 @@ version = "0.1.0"
 name = "decert_scheduler"
 version = "0.1.0"
 dependencies = [
+ "confparse",
  "serde",
  "serde_json",
 ]

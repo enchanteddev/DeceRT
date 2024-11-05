@@ -1,15 +1,15 @@
 use std::{
-    fs::{self, File},
-    io::Write, path::{Path, PathBuf},
+    fs::{self},
+    io::Write,
+    path::PathBuf,
+    sync::Arc,
 };
-
-use crate::{cpu, models::Task};
 
 #[derive(Debug, Clone)]
 pub struct FunctionCall {
-    pub fn_identifier: String,
-    pub call_time_ms: u64,
-    pub args: Vec<String>,
+    pub fn_identifier: Arc<str>,
+    pub cycles: u16,
+    pub args: Vec<Arc<str>>,
 }
 
 #[derive(Debug, Clone)]
@@ -18,7 +18,7 @@ pub struct Delay {
 }
 
 #[derive(Debug, Clone)]
-enum CodeTask {
+pub enum CodeTask {
     FunctionCall(FunctionCall),
     Delay(Delay),
 }
@@ -26,15 +26,13 @@ enum CodeTask {
 #[derive(Debug, Clone)]
 pub struct CodeWriter {
     pub tasks: Vec<CodeTask>,
-    pub cpu_name: String,
     pub delayed_at: Option<i32>,
 }
 
 impl CodeWriter {
-    pub fn new(cpu_name: String) -> CodeWriter {
+    pub fn new() -> CodeWriter {
         CodeWriter {
             tasks: vec![],
-            cpu_name: cpu_name,
             delayed_at: None,
         }
     }
@@ -79,7 +77,7 @@ impl CodeWriter {
                         "runTasks({}, {} ,{})",
                         t.fn_identifier,
                         t.args.join(", "),
-                        t.call_time_ms
+                        t.cycles
                     );
                 }
                 CodeTask::Delay(t) => {
@@ -95,7 +93,9 @@ impl CodeWriter {
             .write(true)
             .open(path.join("entry.cpp"))
             .map_err(|e| e.to_string())?;
-        entry_cpp.write(final_code.as_bytes());
+        entry_cpp
+            .write(final_code.as_bytes())
+            .map_err(|e| e.to_string())?;
         Ok(())
     }
 }
