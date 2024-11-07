@@ -16,15 +16,15 @@ mod scheduler;
 
 #[derive(Deserialize, Clone)]
 pub struct Sensors {
-    name: Arc<str>,
-    from: Arc<str>,
-    to: Arc<str>,
+    pub name: Arc<str>,
+    pub from: Arc<str>,
+    pub to: Arc<str>,
 }
 
 #[derive(Deserialize)]
 pub struct SensorJson {
-    sensors: Vec<Sensors>,
-    ports: Vec<String>,
+    pub sensors: Vec<Sensors>,
+    pub ports: Vec<String>,
 }
 
 fn read_sensors() -> Result<SensorJson, String> {
