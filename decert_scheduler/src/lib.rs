@@ -16,15 +16,15 @@ mod scheduler;
 
 #[derive(Deserialize)]
 pub struct Sensors {
-    name: Arc<str>,
-    from: Arc<str>,
-    to: Arc<str>,
+    pub name: Arc<str>,
+    pub from: Arc<str>,
+    pub to: Arc<str>,
 }
 
 #[derive(Deserialize)]
 pub struct SensorJson {
-    sensors: Vec<Sensors>,
-    ports: Vec<String>,
+    pub sensors: Vec<Sensors>,
+    pub ports: Vec<String>,
 }
 
 fn read_sensors() -> Result<SensorJson, String> {
@@ -35,7 +35,7 @@ fn read_sensors() -> Result<SensorJson, String> {
     Ok(sensorjson)
 }
 
-pub fn schedule(topology: HashMap<u32, Conf>) -> Result<(), String> {
+pub fn schedule(topology: &HashMap<u32, Conf>) -> Result<SensorJson, String> {
     let sensors = read_sensors()?.sensors;
     let mut cpus: HashMap<u32, CPU> = topology
         .iter()
@@ -157,5 +157,6 @@ pub fn schedule(topology: HashMap<u32, Conf>) -> Result<(), String> {
     for (id, cpu_cw) in cpu_codewriter.iter_mut() {
         cpu_cw.commit(PathBuf::from(format!("./dist/obc{id}")))?;
     }
-    Ok(())
+    // Ok(())
+    todo!()
 }

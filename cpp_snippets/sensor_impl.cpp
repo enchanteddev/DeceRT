@@ -1,20 +1,20 @@
 #include "../RTOS/rtos.hpp"
 
-class NAME {
+class {NAME} {
 private:
-    static NAME* instance;
+    static {NAME}* instance;
     int startAddress;
     int endAddress;
     int id;
-    NAME() {
-        startAddress = <ST>;
-        endAddress = <ET>;
-        id= <ID>;
+    {NAME}() {
+        startAddress = {ST};
+        endAddress = {ET};
+        id= {ID};
     }
 public:
-    static NAME* get_instance() {
+    static {NAME}* get_instance() {
         if (instance == nullptr) {
-            instance = new NAME();
+            instance = new {NAME}();
         }
         return instance;
     } 
@@ -22,6 +22,6 @@ public:
         r_read(id, buffer, size);
     }
     void write(char *buffer, int size){
-        r_write(id, buffer, size);
+        r_write("{NAME}", buffer, size);
     }
 };

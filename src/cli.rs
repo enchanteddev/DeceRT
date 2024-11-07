@@ -1,5 +1,9 @@
 use std::{
-    collections::HashMap, env::{current_dir, set_current_dir}, fs::{self, create_dir, File}, io::{self, Write}, path::Path
+    collections::HashMap,
+    env::{current_dir, set_current_dir},
+    fs::{self, create_dir, File},
+    io::{self, Write},
+    path::Path,
 };
 
 use confparse::Conf;
@@ -62,8 +66,6 @@ pub fn update_tasks() -> Result<Conf, String> {
         .open("ports.hpp")
         .map_err(|e| e.to_string())?;
 
-    
-
     ports_hpp.write(
         b"// not to be touched by user\n// will be regenerated to ensure correctness on each build\n",
     ).map_err(|e| e.to_string())?;
@@ -77,7 +79,6 @@ pub fn update_tasks() -> Result<Conf, String> {
 
     let sensors = conf.tasks.iter().flat_map(|x| x.args.clone()).unique();
 
-    
     for sensor in sensors {
         println!("{:?}", sensor);
         write_sensor(&sensor, &mut ports_hpp).map_err(|e| e.to_string())?;
@@ -147,11 +148,10 @@ fn precompilation() -> io::Result<HashMap<u32, Conf>> {
                 println!("Non obc folder found: {path:?}");
                 continue;
             };
-            
-            let obc_id = obc_id_str.parse::<u32>().map_err(|e| io::Error::new(
-                io::ErrorKind::Other,
-                e,
-            ))?;
+
+            let obc_id = obc_id_str
+                .parse::<u32>()
+                .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
 
             obc_ids.push(obc_id);
         }
@@ -163,21 +163,95 @@ fn precompilation() -> io::Result<HashMap<u32, Conf>> {
 
     for obc_id in obc_ids {
         set_current_dir(root_dir.join(Path::new(&format!("obc{obc_id}/"))))?;
-        let conf = update_tasks().map_err(|e| io::Error::new(
-            io::ErrorKind::Other,
-            e,
-        ))?;
+        let conf = update_tasks().map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
         topology.insert(obc_id, conf);
     }
 
     set_current_dir(root_dir)?;
+
     Ok(topology)
 }
 
-
-
 pub fn compile() -> Result<(), String> {
-    let topology = precompilation().map_err(|e| e.to_string())?;
-    schedule(topology)?;
+    let mut topology = precompilation().map_err(|e| e.to_string())?;
+    let sensors = schedule(&topology)?;
+
+    // creating class strings for each sensors and ports in Vec:sensors
+    let mut sensor_impl: HashMap<String, String> = HashMap::new(); // sensor_name: implementation
+    let mut port_impl: HashMap<String, String> = HashMap::new(); // port_name: implementation
+    let mut port2obc: HashMap<String, u32> = HashMap::new(); // port_name:OBC which declares it as out port 
+
+    // sensors
+    let sensor_impl_snippet = include_str!("../cpp_snippets/sensor_impl.cpp");
+    for (id, sensor) in sensors.sensors.iter().enumerate() {
+        let mut sensor_code = sensor_impl_snippet.to_string();
+
+        sensor_code = sensor_code.replace("{NAME}", &sensor.name);
+        sensor_code = sensor_code.replace("{ST}", &sensor.from);
+        sensor_code = sensor_code.replace("{ET}", &sensor.to);
+        sensor_code = sensor_code.replace("{ID}", &id.to_string());
+
+        sensor_impl.insert(sensor.name.to_string(), sensor_code);
+    }
+
+    // ports
+    for (obc_id, conf) in &topology {
+        for port in &conf.outports {
+            if port2obc.contains_key(&port.to_string()) {
+                return Err(format!(
+                    "Two OBCs cannot have the same output port: {obc_id} and {}",
+                    port2obc[&port.to_string()]
+                ));
+            }
+            // Insert the port if it doesn't exist to track it
+            port2obc.insert(port.to_string(), obc_id.clone());
+        }
+    }
+
+    // ports implementations
+    let port_impl_snippet = include_str!("../cpp_snippets/port_impl.cpp");
+    port_impl = port2obc.iter().map(|(port_name, obc_id)| {
+        let mut port_code = port_impl_snippet.to_string();
+
+        port_code = port_code.replace("{NAME}", &port_name);
+        port_code = port_code.replace("{ID}", &obc_id.to_string());
+        
+        (port_name.clone(), port_code)
+    }).collect();
+
+
+    // creates ports.cpp for each obc file
+    let root_dir = current_dir().map_err(|e| e.to_string())?;
+
+    for (obc_id, conf) in &topology {
+        let mut ports_cpp = fs::OpenOptions::new()
+            .create(true)
+            .write(true)
+            .truncate(true)
+            .open(root_dir.join(format!("obc{obc_id}")).join("ports.cpp"))
+            .map_err(|e| e.to_string())?;
+
+        let mut ports_used = conf.outports.clone();
+        ports_used.append(&mut conf.inports.clone());
+        let sensors_used = conf.tasks.iter().flat_map(|x| x.args.clone()).unique();
+        for sensor_name in sensors_used {
+            let Some(implementation) = sensor_impl.get(&*sensor_name) else {
+                Err(format!(
+                    "Sensor used : {sensor_name} is not defined in sensor.json"
+                ))?
+            };
+            ports_cpp.write(implementation.as_bytes()).map_err(|e| e.to_string()) ?;
+        }
+
+        for port_name in ports_used {
+            let Some(implementation) = sensor_impl.get(&*port_name) else {
+                Err(format!(
+                    "Sensor used : {port_name} is not defined in sensor.json"
+                ))?
+            };
+            ports_cpp.write(implementation.as_bytes()).map_err(|e| e.to_string()) ?;
+        }
+    }
+
     Ok(())
 }
