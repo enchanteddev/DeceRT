@@ -53,11 +53,16 @@ pub fn add_obc(id: u32) -> io::Result<()> {
 pub fn update_tasks() -> Result<Conf, String> {
     let conf = confparse::get_conf("tasks.conf")?;
 
+    println!("{:?}", conf);
+
     let mut ports_hpp = fs::OpenOptions::new()
         .create(true)
         .write(true)
+        .truncate(true)
         .open("ports.hpp")
         .map_err(|e| e.to_string())?;
+
+    
 
     ports_hpp.write(
         b"// not to be touched by user\n// will be regenerated to ensure correctness on each build\n",
@@ -72,7 +77,9 @@ pub fn update_tasks() -> Result<Conf, String> {
 
     let sensors = conf.tasks.iter().flat_map(|x| x.args.clone()).unique();
 
+    
     for sensor in sensors {
+        println!("{:?}", sensor);
         write_sensor(&sensor, &mut ports_hpp).map_err(|e| e.to_string())?;
     }
 

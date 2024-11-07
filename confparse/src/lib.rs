@@ -5,7 +5,9 @@ use std::fs::read_to_string;
 use std::ops::Deref;
 use std::sync::Arc;
 use std::vec;
+
 mod parse;
+mod simpleiter;
 
 #[derive(Debug, Clone, PartialEq, Eq, Ord, PartialOrd, Hash)]
 pub struct Task_ {
@@ -159,7 +161,7 @@ fn parse_tasks( tokens: &mut std::slice::Iter<'_, Token>) -> Result<Task, String
     if let Ok(token) = get_token(tokens) {
         match parse_keyword(token.clone(), Keyword::SATISFIES){
             Ok(_) => {
-                populate(&mut task.requires, tokens)?;
+                populate(&mut task.satisfies, tokens)?;
             },
             Err(_) => {}
         };

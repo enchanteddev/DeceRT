@@ -1,10 +1,20 @@
-use std::{collections::HashMap, sync::Arc};
+use std::{collections::HashMap, fmt::Debug, sync::Arc};
 
 use confparse::Task;
 
 #[derive(Clone, Copy, Hash, PartialEq, Eq)]
 pub struct BitMap {
     map: u128,
+}
+
+impl Debug for BitMap {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let hm = self.iter().fold(HashMap::new(), |mut hm, i| {
+            hm.insert(i, self.get(i));
+            hm
+        });
+        write!(f, "BitMap {{ {:?} }}", hm)
+    }
 }
 
 impl BitMap {
@@ -17,7 +27,7 @@ impl BitMap {
     }
 
     pub fn set(&mut self, index: u8, val: bool) {
-        self.map &= (val as u128) << index;
+        self.map |= (val as u128) << index;
     }
 
     pub fn conflict(&self, other: &Self) -> bool {
@@ -72,6 +82,7 @@ fn task_schedule_rec(
     sensors_to_int: &HashMap<Arc<str>, u8>,
     sensors_used: BitMap,
 ) -> BitMap {
+    println!("index: {:?}, sensors_used: {:?}", index, sensors_used);
     if sensors_used.is_filled(sensors_to_int.len() as u8) {
         return BitMap { map: 0 };
     }
@@ -85,6 +96,8 @@ fn task_schedule_rec(
         };
         s.set(*i, true);
     });
+    // println!("task: {:?}", task);
+    // println!("s: {:?}", s);
 
     let mut task_marked = task_schedule_rec(tasks, index + 1, sensors_to_int, s);
     task_marked.set(index, true);

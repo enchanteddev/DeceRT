@@ -5,7 +5,7 @@ use std::{
 
 use confparse::Task;
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct CPU {
     pub id: u32,
     tasks: Vec<Task>,
@@ -56,9 +56,9 @@ impl CPU {
     }
 }
 
-pub fn get_next_tasks(cpus: HashMap<u32, CPU>) -> HashMap<u32, Option<Task>> {
+pub fn get_next_tasks(unutilised_cpus: &HashSet<u32>, cpus: &mut HashMap<u32, CPU>) -> HashMap<u32, Option<Task>> {
     /* returns a HashMap of next tasks for the given list of cpus*/
-    cpus.into_iter()
-        .map(|(id, mut cpu)| (id, cpu.get_task()))
+    unutilised_cpus.into_iter()
+        .filter_map(|id| cpus.get_mut(&id).map(|f| (*id, f.get_task())))
         .collect()
 }

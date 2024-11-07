@@ -1,2 +1,4 @@
 /target
 */*/*tasks.conf*
+/exampleapp
+launch.json

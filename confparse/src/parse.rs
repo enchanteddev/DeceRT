@@ -107,5 +107,7 @@ pub fn parse(input: &str) -> Result<Vec<Token>, String> {
             tokens.push(Token::Literal(cycle.to_string().into()));
         }
     }
-    Ok(tokens)
+    let nonempty = tokens.into_iter().filter(|f| !matches!(f, Token::Literal(x) if x.is_empty())).collect();
+    println!("{:?}", nonempty);
+    Ok(nonempty)
 }
