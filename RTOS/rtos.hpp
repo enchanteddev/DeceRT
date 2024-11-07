@@ -1,4 +1,4 @@
-void runThread(void (*f)(void*), void* , int);
+void runTask(void (*f)(void*), void* , int);
 
 void delay(int);
 

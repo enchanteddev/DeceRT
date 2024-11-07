@@ -74,25 +74,26 @@ impl CodeWriter {
             match task {
                 CodeTask::FunctionCall(t) => {
                     tasks_string += &format!(
-                        "runTasks({}, {} ,{})",
+                        "runTask({}, {} ,{});\n\t\t",
                         t.fn_identifier,
                         t.args.join(", "),
                         t.cycles
                     );
                 }
                 CodeTask::Delay(t) => {
-                    tasks_string += &format!("delay({})", t.call_time_ms);
+                    tasks_string += &format!("delay({});\n", t.call_time_ms);
                 }
             }
         }
         let entry_snippet = include_str!("../../cpp_snippets/obc.cpp");
         let final_code = entry_snippet.replace("__TASKS__", &tasks_string);
 
-        create_dir_all(&path);
+        create_dir_all(&path).map_err(|e| e.to_string())?;
 
         let mut entry_cpp = fs::OpenOptions::new()
             .create(true)
             .write(true)
+            .truncate(true)
             .open(path.join("entry.cpp"))
             .map_err(|e| e.to_string())?;
         entry_cpp

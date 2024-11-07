@@ -67,55 +67,59 @@ pub fn schedule(topology: HashMap<u32, Conf>) -> Result<(), String> {
 
     loop {
         println!("Cycle {}", time);
-        next_tasks = get_next_tasks(&unutilized_cpus, &mut cpus)
-            .iter()
-            .filter_map(|entry| {
-                entry.1.as_ref().map(|t| {
-                    task2cpus.insert(t.clone(), *entry.0);
-                    if pending_tasks.contains_key(t) {
-                        (t.clone(), pending_tasks[t] as u8)
-                    } else {
-                        // initially set task-wt to 1
-                        (t.clone(), 1 as u8)
-                    }
-                })
-            })
-            .collect();
-
-        println!("next_tasks: {:?}", next_tasks);
-
-        if next_tasks.is_empty() {
-            // reset and continue
-            cpus.iter_mut().for_each(|(id, cpu)| {
-                cpu.reset();
-                let Some(codewriter) = cpu_codewriter.get_mut(id) else {
-                    return;
-                };
-                codewriter.start_delay(time);
-            });
-            continue;
-        }
-
-        // pushed newly scheduled tasks into scheduled tasks
-        println!("sensors_to_int: {:?}", sensors_to_int);
-        let task_currently_scheduled = task_schedule(&next_tasks, &sensors_to_int, sensor_bitmap);
-        println!("task_currently_scheduled: {:?}", task_currently_scheduled);
-        for task in &task_currently_scheduled {
-            task.args
+        loop {
+            next_tasks = get_next_tasks(&unutilized_cpus, &mut cpus)
                 .iter()
-                .for_each(|sensor| sensor_bitmap.set(sensors_to_int[sensor], true));
-            // remove the cpu of these tasks from unutilized
-            unutilized_cpus.remove(&task2cpus[task]);
-            scheduled_tasks.push((-(task.cycles as i32), task.clone()));
-        }
+                .filter_map(|entry| {
+                    entry.1.as_ref().map(|t| {
+                        task2cpus.insert(t.clone(), *entry.0);
+                        if pending_tasks.contains_key(t) {
+                            (t.clone(), pending_tasks[t] as u8)
+                        } else {
+                            // initially set task-wt to 1
+                            (t.clone(), 1 as u8)
+                        }
+                    })
+                })
+                .collect();
 
-        // append the rest of the tasks to pending tasks
-        next_tasks.iter().for_each(|(task, weight)| {
-            if !task_currently_scheduled.contains(&(task.clone())) {
-                pending_tasks.insert(task.clone(), weight + 1);
+            println!("next_tasks: {:?}", next_tasks);
+
+            if next_tasks.is_empty() {
+                // reset and continue
+                cpus.iter_mut().for_each(|(id, cpu)| {
+                    cpu.reset();
+                });
+                unutilized_cpus.iter().for_each(|id| {
+                    let Some(codewriter) = cpu_codewriter.get_mut(id) else {
+                        return;
+                    };
+                    codewriter.start_delay(time);
+                });
+                break;
             }
-        });
 
+            // pushed newly scheduled tasks into scheduled tasks
+            println!("sensors_to_int: {:?}", sensors_to_int);
+            let task_currently_scheduled =
+                task_schedule(&next_tasks, &sensors_to_int, sensor_bitmap);
+            println!("task_currently_scheduled: {:?}", task_currently_scheduled);
+            for task in &task_currently_scheduled {
+                task.args
+                    .iter()
+                    .for_each(|sensor| sensor_bitmap.set(sensors_to_int[sensor], true));
+                // remove the cpu of these tasks from unutilized
+                unutilized_cpus.remove(&task2cpus[task]);
+                scheduled_tasks.push((-(task.cycles as i32), task.clone()));
+            }
+
+            // append the rest of the tasks to pending tasks
+            next_tasks.iter().for_each(|(task, weight)| {
+                if !task_currently_scheduled.contains(&(task.clone())) {
+                    pending_tasks.insert(task.clone(), weight + 1);
+                }
+            });
+        }
         // if empty then schduling completed
         if scheduled_tasks.is_empty() {
             break;
@@ -125,7 +129,9 @@ pub fn schedule(topology: HashMap<u32, Conf>) -> Result<(), String> {
         let Some(task_entry) = scheduled_tasks.pop() else {
             Err("Something bad occured ")?
         };
-        let task_cpu = cpus.get_mut(&task2cpus[&task_entry.1]).expect("Did not find CPU for id. Impossible!");
+        let task_cpu = cpus
+            .get_mut(&task2cpus[&task_entry.1])
+            .expect("Did not find CPU for id. Impossible!");
         let curr_task = task_entry.1;
         println!("curr_task: {:?}", curr_task);
         task2cpus.remove(&curr_task); // freeing space
@@ -155,7 +161,7 @@ pub fn schedule(topology: HashMap<u32, Conf>) -> Result<(), String> {
         );
     }
     for (id, cpu_cw) in cpu_codewriter.iter_mut() {
-        cpu_cw.commit(PathBuf::from(format!("./dist/obc{id}")))?;
+        cpu_cw.commit(PathBuf::from(format!("./obc{id}")))?;
     }
     Ok(())
 }
