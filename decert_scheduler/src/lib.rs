@@ -14,7 +14,7 @@ mod codewriter;
 mod cpu;
 mod scheduler;
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Clone)]
 pub struct Sensors {
     name: Arc<str>,
     from: Arc<str>,
@@ -35,8 +35,9 @@ fn read_sensors() -> Result<SensorJson, String> {
     Ok(sensorjson)
 }
 
-pub fn schedule(topology: HashMap<u32, Conf>) -> Result<(), String> {
-    let sensors = read_sensors()?.sensors;
+pub fn schedule(topology: HashMap<u32, Conf>) -> Result<SensorJson, String> {
+    let sensorjson = read_sensors()?;
+    let sensors = sensorjson.sensors.clone();
     let mut cpus: HashMap<u32, CPU> = topology
         .iter()
         .map(|entry| (*entry.0, CPU::new(*entry.0, entry.1.tasks.clone())))
@@ -163,5 +164,5 @@ pub fn schedule(topology: HashMap<u32, Conf>) -> Result<(), String> {
     for (id, cpu_cw) in cpu_codewriter.iter_mut() {
         cpu_cw.commit(PathBuf::from(format!("./obc{id}")))?;
     }
-    Ok(())
+    Ok(sensorjson)
 }
