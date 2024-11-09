@@ -208,6 +208,17 @@ pub fn compile() -> Result<(), String> {
         }
     }
 
+    // Restricting one to one mapping for input and output ports
+    // TODO: could be deleted after the RTOS is implemented to handle many input ports
+    match topology.iter().flat_map(|(_, conf)| {
+        conf.inports.clone()
+    }).duplicates().next()  {
+        Some(port) => {
+            Err(format!("There must be one to one mapping of ports.input port:{port} was used in more than one OBC."))?
+        },
+        None => {}
+    };
+
     // ports implementations
     let port_impl_snippet = include_str!("../cpp_snippets/port_impl.cpp");
     let port_impl: HashMap<String, String> = port2obc.iter().map(|(port_name, obc_id)| {
@@ -220,9 +231,10 @@ pub fn compile() -> Result<(), String> {
     }).collect();
 
 
-    // creates ports.cpp for each obc file
     let root_dir = current_dir().map_err(|e| e.to_string())?;
-
+    
+    
+    // creates ports.cpp for each obc file
     for (obc_id, conf) in &topology {
         let mut ports_cpp = fs::OpenOptions::new()
             .create(true)
@@ -233,6 +245,8 @@ pub fn compile() -> Result<(), String> {
 
         let mut ports_used = conf.outports.clone();
         ports_used.append(&mut conf.inports.clone());
+        
+        // all the sensors used by this OBC
         let sensors_used = conf.tasks.iter().flat_map(|x| x.args.clone()).unique();
         for sensor_name in sensors_used {
             let Some(implementation) = sensor_impl.get(&*sensor_name) else {
