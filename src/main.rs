@@ -1,6 +1,7 @@
 use std::process::exit;
 
 mod cli;
+mod artifacts;
 
 fn main() {
     let args = std::env::args().collect::<Vec<_>>();

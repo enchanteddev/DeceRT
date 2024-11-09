@@ -10,6 +10,8 @@ use confparse::Conf;
 use decert_scheduler::schedule;
 use itertools::Itertools;
 
+use crate::artifacts::compile_entry_cpp;
+
 fn write_input_port(port_name: &str, ports_hpp: &mut File) -> io::Result<()> {
     let input_port_snippet = include_str!("../cpp_snippets/input_port.cpp");
     ports_hpp
@@ -253,5 +255,8 @@ pub fn compile() -> Result<(), String> {
         }
     }
 
+    for (obc_id, _) in &topology {
+        compile_entry_cpp(*obc_id);
+    }
     Ok(())
 }
