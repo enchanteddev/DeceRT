@@ -173,12 +173,12 @@ fn precompilation() -> io::Result<HashMap<u32, Conf>> {
 }
 
 pub fn compile() -> Result<(), String> {
-    let mut topology = precompilation().map_err(|e| e.to_string())?;
+    let topology = precompilation().map_err(|e| e.to_string())?;
     let sensors = schedule(&topology)?;
 
     // creating class strings for each sensors and ports in Vec:sensors
     let mut sensor_impl: HashMap<String, String> = HashMap::new(); // sensor_name: implementation
-    let mut port_impl: HashMap<String, String> = HashMap::new(); // port_name: implementation
+    // let mut port_impl: HashMap<String, String> = HashMap::new(); // port_name: implementation
     let mut port2obc: HashMap<String, u32> = HashMap::new(); // port_name:OBC which declares it as out port 
 
     // sensors
@@ -210,7 +210,7 @@ pub fn compile() -> Result<(), String> {
 
     // ports implementations
     let port_impl_snippet = include_str!("../cpp_snippets/port_impl.cpp");
-    port_impl = port2obc.iter().map(|(port_name, obc_id)| {
+    let port_impl: HashMap<String, String> = port2obc.iter().map(|(port_name, obc_id)| {
         let mut port_code = port_impl_snippet.to_string();
 
         port_code = port_code.replace("{NAME}", &port_name);
