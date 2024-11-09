@@ -303,7 +303,7 @@ pub fn compile() -> Result<(), String> {
 
     for (obc_id, _) in &topology {
         // copy rtos.hpp in each obc folder
-        let rtos_hpp = include_str!("../RTOS/rtos.hpp");
+        let rtos_hpp = include_str!("../cpp_snippets/rtos.hpp");
         let mut rtos_hpp_file = fs::OpenOptions::new()
             .create(true)
             .write(true)

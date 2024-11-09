@@ -10,6 +10,11 @@ add-obc <id>
         -   Creates a new file `obc<id>/ports.hpp`
         -   Adds `tasks.conf` inside of `obc<id>`
 
+#
+Add your implementation for tasks in /entry
+and 
+#
+
 update-tasks
     * update-task.rs
         - parse sensor.json
