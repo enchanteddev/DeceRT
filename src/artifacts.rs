@@ -1,4 +1,4 @@
-use std::{fmt::format, fs::create_dir_all, path::PathBuf, process::Command};
+use std::{fs::create_dir_all, path::PathBuf, process::Command};
 
 pub fn compile_entry_cpp(obc_id: u32) -> std::io::Result<()> {
     println!("Compiling entry cpp for obc{obc_id}\n\n\n");
