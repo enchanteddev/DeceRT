@@ -21,7 +21,6 @@ pub fn compile_entry_cpp(obc_id: u32) -> std::io::Result<()> {
         .cpp(true)
         .file(path_to_obc.join("entry.cpp"))
         .file(path_to_obc.join("ports.cpp"))
-        .file("/home/krawat/coding/DeceRT/RTOS/rtos.cpp")
         .files(
             path_to_obc
                 .join("entry")
