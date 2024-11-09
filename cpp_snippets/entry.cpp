@@ -1,5 +1,6 @@
 #include "ports.hpp"
 #include "rtos.hpp"
+#include "entry.hpp"
 
 {PREFIX}
 

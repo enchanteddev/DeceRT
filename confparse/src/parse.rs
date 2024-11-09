@@ -108,6 +108,6 @@ pub fn parse(input: &str) -> Result<Vec<Token>, String> {
         }
     }
     let nonempty = tokens.into_iter().filter(|f| !matches!(f, Token::Literal(x) if x.is_empty())).collect();
-    println!("{:?}", nonempty);
+    // println!("{:?}", nonempty);
     Ok(nonempty)
 }

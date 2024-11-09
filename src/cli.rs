@@ -4,6 +4,7 @@ use std::{
     fs::{self, create_dir, File},
     io::{self, Write},
     path::Path,
+    sync::Arc,
 };
 
 use confparse::Conf;
@@ -56,10 +57,21 @@ pub fn add_obc(id: u32) -> io::Result<()> {
     Ok(())
 }
 
+fn get_args_string(args: &Vec<Arc<str>>) -> String {
+    args.iter()
+        .filter(|f| f.len() > 0)
+        .map(|x| {
+            let first3lower = x[..3].to_lowercase();
+            format!("{x}* {first3lower}")
+        })
+        .collect::<Vec<String>>()
+        .join(", ")
+}
+
 pub fn update_tasks() -> Result<Conf, String> {
     let conf = confparse::get_conf("tasks.conf")?;
 
-    println!("{:?}", conf);
+    // println!("{:?}", conf);
 
     let mut ports_hpp = fs::OpenOptions::new()
         .create(true)
@@ -82,7 +94,7 @@ pub fn update_tasks() -> Result<Conf, String> {
     let sensors = conf.tasks.iter().flat_map(|x| x.args.clone()).unique();
 
     for sensor in sensors {
-        println!("{:?}", sensor);
+        // println!("{:?}", sensor);
         write_sensor(&sensor, &mut ports_hpp).map_err(|e| e.to_string())?;
     }
 
@@ -95,19 +107,9 @@ pub fn update_tasks() -> Result<Conf, String> {
             Err(e) => return Err(e.to_string()),
         };
 
-        let task_code = task_snippet.replace("TASKNAME", &task.name).replace(
-            "ARGS",
-            &task
-                .args
-                .iter()
-                .filter(|f| f.len() > 0)
-                .map(|x| {
-                    let first3lower = x[..3].to_lowercase();
-                    format!("{x} {first3lower}")
-                })
-                .collect::<Vec<String>>()
-                .join(", "),
-        );
+        let task_code = task_snippet
+            .replace("TASKNAME", &task.name)
+            .replace("ARGS", &get_args_string(&task.args));
 
         file.write(task_code.as_bytes())
             .map_err(|e| e.to_string())?;
@@ -121,6 +123,28 @@ pub fn update_tasks() -> Result<Conf, String> {
             Err(format!("'{filename}' is not the name of any task."))?
         }
     }
+
+    // create entry.hpp
+    let entry_hpp =
+        conf.tasks
+            .iter()
+            .fold(String::from("#include \"ports.hpp\"\n\n"), |acc, task| {
+                acc + &"\n\nvoid TASKNAME(ARGS);"
+                    .replace("TASKNAME", &task.name)
+                    .replace("ARGS", &get_args_string(&task.args))
+            });
+
+    let mut entry_hpp_file = fs::OpenOptions::new()
+        .create(true)
+        .write(true)
+        .truncate(true)
+        .open("entry.hpp")
+        .map_err(|e| e.to_string())?;
+    
+    
+    entry_hpp_file
+        .write(entry_hpp.as_bytes())
+        .map_err(|e| e.to_string())?;
 
     Ok(conf)
 }
@@ -180,8 +204,8 @@ pub fn compile() -> Result<(), String> {
 
     // creating class strings for each sensors and ports in Vec:sensors
     let mut sensor_impl: HashMap<String, String> = HashMap::new(); // sensor_name: implementation
-    // let mut port_impl: HashMap<String, String> = HashMap::new(); // port_name: implementation
-    let mut port2obc: HashMap<String, u32> = HashMap::new(); // port_name:OBC which declares it as out port 
+                                                                   // let mut port_impl: HashMap<String, String> = HashMap::new(); // port_name: implementation
+    let mut port2obc: HashMap<String, u32> = HashMap::new(); // port_name:OBC which declares it as out port
 
     // sensors
     let sensor_impl_snippet = include_str!("../cpp_snippets/sensor_impl.cpp");
@@ -212,15 +236,17 @@ pub fn compile() -> Result<(), String> {
 
     // ports implementations
     let port_impl_snippet = include_str!("../cpp_snippets/port_impl.cpp");
-    let port_impl: HashMap<String, String> = port2obc.iter().map(|(port_name, obc_id)| {
-        let mut port_code = port_impl_snippet.to_string();
+    let port_impl: HashMap<String, String> = port2obc
+        .iter()
+        .map(|(port_name, obc_id)| {
+            let mut port_code = port_impl_snippet.to_string();
 
-        port_code = port_code.replace("{NAME}", &port_name);
-        port_code = port_code.replace("{ID}", &obc_id.to_string());
-        
-        (port_name.clone(), port_code)
-    }).collect();
+            port_code = port_code.replace("{NAME}", &port_name);
+            port_code = port_code.replace("{ID}", &obc_id.to_string());
 
+            (port_name.clone(), port_code)
+        })
+        .collect();
 
     // creates ports.cpp for each obc file
     let root_dir = current_dir().map_err(|e| e.to_string())?;
@@ -233,6 +259,8 @@ pub fn compile() -> Result<(), String> {
             .open(root_dir.join(format!("obc{obc_id}")).join("ports.cpp"))
             .map_err(|e| e.to_string())?;
 
+        ports_cpp.write("#include \"rtos.hpp\"\n\n".as_bytes()).map_err(|e| e.to_string())?;
+
         let mut ports_used = conf.outports.clone();
         ports_used.append(&mut conf.inports.clone());
         let sensors_used = conf.tasks.iter().flat_map(|x| x.args.clone()).unique();
@@ -242,7 +270,9 @@ pub fn compile() -> Result<(), String> {
                     "Sensor used : {sensor_name} is not defined in sensor.json"
                 ))?
             };
-            ports_cpp.write(implementation.as_bytes()).map_err(|e| e.to_string()) ?;
+            ports_cpp
+                .write(implementation.as_bytes())
+                .map_err(|e| e.to_string())?;
         }
 
         for port_name in ports_used {
@@ -251,12 +281,26 @@ pub fn compile() -> Result<(), String> {
                     "Port used : {port_name} is not defined in sensor.json"
                 ))?
             };
-            ports_cpp.write(implementation.as_bytes()).map_err(|e| e.to_string()) ?;
+            ports_cpp
+                .write(implementation.as_bytes())
+                .map_err(|e| e.to_string())?;
         }
     }
 
     for (obc_id, _) in &topology {
-        compile_entry_cpp(*obc_id);
+        // copy rtos.hpp in each obc folder
+        let rtos_hpp = include_str!("../RTOS/rtos.hpp");
+        let mut rtos_hpp_file = fs::OpenOptions::new()
+            .create(true)
+            .write(true)
+            .truncate(true)
+            .open(root_dir.join(format!("obc{obc_id}")).join("rtos.hpp"))
+            .map_err(|e| e.to_string())?;
+        rtos_hpp_file
+            .write(rtos_hpp.as_bytes())
+            .map_err(|e| e.to_string())?;
+
+        compile_entry_cpp(*obc_id).map_err(|e| e.to_string())?;
     }
     Ok(())
 }

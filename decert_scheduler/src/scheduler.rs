@@ -82,7 +82,7 @@ fn task_schedule_rec(
     sensors_to_int: &HashMap<Arc<str>, u8>,
     sensors_used: BitMap,
 ) -> BitMap {
-    println!("index: {:?}, sensors_used: {:?}", index, sensors_used);
+    // println!("index: {:?}, sensors_used: {:?}", index, sensors_used);
     if sensors_used.is_filled(sensors_to_int.len() as u8) {
         return BitMap { map: 0 };
     }

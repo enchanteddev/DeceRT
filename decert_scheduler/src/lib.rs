@@ -67,7 +67,7 @@ pub fn schedule(topology: &HashMap<u32, Conf>) -> Result<SensorJson, String> {
     let mut time = 0;
 
     loop {
-        println!("Cycle {}", time);
+        // println!("Cycle {}", time);
         loop {
             next_tasks = get_next_tasks(&unutilized_cpus, &mut cpus)
                 .iter()
@@ -84,7 +84,7 @@ pub fn schedule(topology: &HashMap<u32, Conf>) -> Result<SensorJson, String> {
                 })
                 .collect();
 
-            println!("next_tasks: {:?}", next_tasks);
+            // println!("next_tasks: {:?}", next_tasks);
 
             if next_tasks.is_empty() {
                 // reset and continue
@@ -101,10 +101,10 @@ pub fn schedule(topology: &HashMap<u32, Conf>) -> Result<SensorJson, String> {
             }
 
             // pushed newly scheduled tasks into scheduled tasks
-            println!("sensors_to_int: {:?}", sensors_to_int);
+            // println!("sensors_to_int: {:?}", sensors_to_int);
             let task_currently_scheduled =
                 task_schedule(&next_tasks, &sensors_to_int, sensor_bitmap);
-            println!("task_currently_scheduled: {:?}", task_currently_scheduled);
+            // println!("task_currently_scheduled: {:?}", task_currently_scheduled);
             for task in &task_currently_scheduled {
                 task.args
                     .iter()
@@ -134,11 +134,11 @@ pub fn schedule(topology: &HashMap<u32, Conf>) -> Result<SensorJson, String> {
             .get_mut(&task2cpus[&task_entry.1])
             .expect("Did not find CPU for id. Impossible!");
         let curr_task = task_entry.1;
-        println!("curr_task: {:?}", curr_task);
+        // println!("curr_task: {:?}", curr_task);
         task2cpus.remove(&curr_task); // freeing space
         unutilized_cpus.insert(task_cpu.id); // added this cpu to unutilized
 
-        println!("unutilized_cpus: {:?}", unutilized_cpus);
+        // println!("unutilized_cpus: {:?}", unutilized_cpus);
 
         // free up the sensors
         curr_task
