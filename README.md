@@ -8,6 +8,13 @@ Clone this repository and run `cargo r -r` to run the DeceRT CLI.
 
 You can also run `cargo b -r` to build the DeceRT CLI, and use the executable in the `target/release` folder directly.
 
+# Scheduler Algorithm
+Our scheduling algorithm is explained in this diagram:
+
+
+![Decert Scheduler](./scheduler.png)
+This is the screenshot of the [rtos.dia](./rtos.dia) file.
+
 # Docs
 
 1. [Quickstart Guide](./docs/quickstart.md)
