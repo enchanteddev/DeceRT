@@ -35,7 +35,7 @@ fn read_sensors() -> Result<SensorJson, String> {
     Ok(sensorjson)
 }
 
-pub fn schedule(topology: HashMap<u32, Conf>) -> Result<SensorJson, String> {
+pub fn schedule(topology: &HashMap<u32, Conf>) -> Result<SensorJson, String> {
     let sensorjson = read_sensors()?;
     let sensors = sensorjson.sensors.clone();
     let mut cpus: HashMap<u32, CPU> = topology

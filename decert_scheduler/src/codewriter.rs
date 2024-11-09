@@ -69,7 +69,7 @@ fn write_run_task(
     delay: u32,
 ) -> String {
     format!(
-        "{}\nrun_task(wrapper_{name}, args_{name}, {delay});",
+        "{}\n\t\trunTask(wrapper_{name}, args_{name}, {delay});",
         write_args_array(name, args, arg_vars)
     )
 }
@@ -151,7 +151,7 @@ impl CodeWriter {
 
         let inits = all_args
             .iter()
-            .map(|f| format!("{}* var_{} = new {}();\n\t", f, arg_vars[f], f))
+            .map(|f| format!("{}* {} = new {}();\n\t", f, arg_vars[f], f))
             .fold(String::new(), |acc, x| acc + &x);
 
         let mut tasks_string = "".to_string();
@@ -164,6 +164,7 @@ impl CodeWriter {
                         arg_vars.clone(),
                         t.cycles as u32,
                     );
+                    tasks_string += "\n\t\t";
                     //&format!(
                     //     "runTask({}, {} ,{});\n\t\t",
                     //     t.fn_identifier,
@@ -177,7 +178,10 @@ impl CodeWriter {
             }
         }
         let entry_snippet = include_str!("../../cpp_snippets/entry.cpp");
-        let final_code = entry_snippet.replace("{TASKS}", &tasks_string);
+        let final_code = entry_snippet
+            .replace("{PREFIX}", &task_wrappers)
+            .replace("{TASKS}", &tasks_string)
+            .replace("{INITS}", &inits);
 
         create_dir_all(&path).map_err(|e| e.to_string())?;
 

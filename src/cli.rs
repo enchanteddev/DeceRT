@@ -244,9 +244,9 @@ pub fn compile() -> Result<(), String> {
         }
 
         for port_name in ports_used {
-            let Some(implementation) = sensor_impl.get(&*port_name) else {
+            let Some(implementation) = port_impl.get(&*port_name) else {
                 Err(format!(
-                    "Sensor used : {port_name} is not defined in sensor.json"
+                    "Port used : {port_name} is not defined in sensor.json"
                 ))?
             };
             ports_cpp.write(implementation.as_bytes()).map_err(|e| e.to_string()) ?;

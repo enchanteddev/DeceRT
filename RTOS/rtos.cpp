@@ -1,4 +1,4 @@
-void runTask(void (*f)(void*), void* args , int cycles){
+void runTask(void (*f)(void**), void* args , int cycles){
 
 }
 

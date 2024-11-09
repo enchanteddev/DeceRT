@@ -1,5 +1,3 @@
-#include "../RTOS/rtos.hpp"
-
 class {NAME} {
 private:
     static {NAME}* instance;
