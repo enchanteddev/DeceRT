@@ -11,7 +11,7 @@ use confparse::Conf;
 use decert_scheduler::schedule;
 use itertools::Itertools;
 
-use crate::artifacts::compile_entry_cpp;
+use crate::artifacts::{compile_demo_rtos, compile_entry_cpp};
 
 fn write_input_port(port_name: &str, ports_hpp: &mut File) -> io::Result<()> {
     let input_port_snippet = include_str!("../cpp_snippets/input_port.cpp");
@@ -209,6 +209,7 @@ pub fn compile() -> Result<(), String> {
 
     // sensors
     let sensor_impl_snippet = include_str!("../cpp_snippets/sensor_impl.cpp");
+    let sensor_names = sensors.sensors.iter().enumerate().map(|(i, x)| (x.name.clone(), i as u64)).collect::<HashMap<Arc<str>, u64>>();
     for (id, sensor) in sensors.sensors.iter().enumerate() {
         let mut sensor_code = sensor_impl_snippet.to_string();
 
@@ -247,14 +248,16 @@ pub fn compile() -> Result<(), String> {
 
     // ports implementations
     let port_impl_snippet = include_str!("../cpp_snippets/port_impl.cpp");
+    let mut port_names: HashMap<Arc<str>, u64> = HashMap::new();
     let port_impl: HashMap<String, String> = port2obc
-        .iter()
-        .map(|(port_name, obc_id)| {
+        .iter().enumerate()
+        .map(|(id, (port_name, _))| {
             let mut port_code = port_impl_snippet.to_string();
 
             port_code = port_code.replace("{NAME}", &port_name);
-            port_code = port_code.replace("{ID}", &obc_id.to_string());
+            port_code = port_code.replace("{ID}", &id.to_string());
 
+            port_names.insert(port_name.clone().into(), id as u64);
             (port_name.clone(), port_code)
         })
         .collect();
@@ -299,6 +302,11 @@ pub fn compile() -> Result<(), String> {
                 .write(implementation.as_bytes())
                 .map_err(|e| e.to_string())?;
         }
+    }
+
+    match compile_demo_rtos(sensor_names, port_names) {
+        Ok(_) => {},
+        Err(e) => return Err(e.to_string())
     }
 
     for (obc_id, _) in &topology {

@@ -1,4 +1,4 @@
-use std::{fs::create_dir_all, path::PathBuf, process::Command};
+use std::{collections::HashMap, fs::create_dir_all, path::{Path, PathBuf}, process::Command, sync::Arc};
 
 pub fn compile_entry_cpp(obc_id: u32) -> std::io::Result<()> {
     println!("Compiling entry cpp for obc{obc_id}\n\n\n");
@@ -7,75 +7,93 @@ pub fn compile_entry_cpp(obc_id: u32) -> std::io::Result<()> {
     let dist_folder = path_to_obc.join("dist/");
     create_dir_all(&dist_folder)?;
 
-    // let entry = path_to_obc.join("entry");
-    // let fill = entry.read_dir().unwrap().map(|f| f.unwrap().path());
-    // for f in fill {
-    //     println!("{:?}", f);
-    // }
-
-    cc::Build::new()
-        .target("x86_64-unknown-linux-gnu")
-        .opt_level(2)
-        .host("x86_64-unknown-linux-gnu")
-        .out_dir(&dist_folder)
-        .cpp(true)
-        .file(path_to_obc.join("entry.cpp"))
-        .file(path_to_obc.join("ports.cpp"))
-        .files(
+    let compilation_command = Command::new("g++")
+        .arg("-O2") // optimisation level 2
+        .arg("-c")
+        .arg("-o")
+        .arg(dist_folder.join(format!("obc{obc_id}.o")))
+        .arg(path_to_obc.join("entry.cpp"))
+        .arg(path_to_obc.join("ports.cpp"))
+        .args(
             path_to_obc
                 .join("entry")
                 .read_dir()
                 .unwrap()
                 .map(|f| f.unwrap().path()),
         )
-        .files(
+        .args(
             path_to_obc
                 .join("lib")
                 .read_dir()
                 .unwrap()
                 .map(|f| f.unwrap().path()),
         )
-        .compile(&format!("obc{obc_id}"));
-
-    let refresh_command = Command::new("rm")
-        .arg(dist_folder.join(format!("libobc{obc_id}.a")))
-        .arg(dist_folder.join(format!("obc{obc_id}.o")))
         .output();
 
-    println!("Removed previosly generated files: {:?}", refresh_command);
+    match compilation_command {
+        Ok(x) => {
+            println!("Compiled obc{obc_id} Successfully");
+            println!("Compilation output: [{x:?}]");
+        }
+        Err(e) => {
+            println!("Compiling obc{obc_id} Failed");
+            println!("Error message: [{e:?}]");
+        }
+    }
+    Ok(())
+}
 
-    let ld_output = Command::new("ld")
-        .arg("-r")
+fn get_names_array(names: HashMap<Arc<str>, u64>) -> Vec<Arc<str>> {
+    let mut id_names = names
+        .into_iter()
+        .map(|(name, id)| (id, name))
+        .collect::<Vec<_>>();
+
+    id_names.sort();
+    id_names.into_iter().map(|(_, name)| name).collect()
+}
+
+pub fn compile_demo_rtos(
+    sensor_names: HashMap<Arc<str>, u64>,
+    port_names: HashMap<Arc<str>, u64>,
+) -> std::io::Result<()> {
+    let rtos_cpp_template = include_str!("../cpp_snippets/rtos.cpp");
+
+    let rtos_cpp = rtos_cpp_template
+        .replace(
+            "{SENSOR_NAMES}",
+            &format!("{{{}}}", &get_names_array(sensor_names).join(", ")),
+        )
+        .replace(
+            "{PORT_NAMES}",
+            &format!("{{{}}}", &get_names_array(port_names).join(", ")),
+        );
+
+    let temp_dir = std::env::temp_dir();
+    let rtos_cpp_path = temp_dir.join("rtos.cpp");
+    std::fs::write(&rtos_cpp_path, rtos_cpp)?;
+    
+
+    let rtos_dir = PathBuf::from("./rtos");
+    create_dir_all(&rtos_dir)?;
+
+    let compilation_command = Command::new("g++")
+        .arg("-O2") // optimisation level 2
+        .arg("-c")
         .arg("-o")
-        .arg(dist_folder.join(format!("obc{obc_id}.o")))
-        .args(dist_folder.read_dir().unwrap().filter_map(|object_file| {
-            let fp = object_file.ok()?.path();
-            if fp.extension()? == "o" {
-                fp.to_str().map(|s| s.to_string())
-            } else {
-                None
-            }
-        }))
+        .arg("./rtos.o")
+        .arg(rtos_cpp_path)
         .output();
 
-    println!("Linked object files: {:?}", ld_output);
-
-    let clean_output = Command::new("rm")
-        .args(dist_folder.read_dir().unwrap().filter_map(|object_file| {
-            let fp = object_file.ok()?.path();
-            if fp.file_name()?.to_str()?.to_string() != format!("obc{obc_id}.o")
-                && fp.extension()? == "o"
-            {
-                fp.to_str().map(|s| s.to_string())
-            } else {
-                None
-            }
-        }))
-        .output();
-
-    println!("Clean remaining object files: {:?}", clean_output);
-
-    println!("Compilation successful for obc{obc_id}\n\n\n");
-
+    match compilation_command {
+        Ok(x) => {
+            println!("Compiled demo rtos Successfully");
+            println!("Compilation output: [{x:?}]");
+        }
+        Err(e) => {
+            println!("Compiling demo rtos Failed");
+            println!("Error message: [{e:?}]");
+        }
+    }
     Ok(())
 }
