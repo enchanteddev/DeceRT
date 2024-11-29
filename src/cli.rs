@@ -69,10 +69,21 @@ fn get_args_string(args: &Vec<Arc<str>>) -> String {
 }
 
 pub fn update_tasks() -> Result<Conf, String> {
-    let conf = confparse::get_conf("tasks.conf")?;
+    let dir =
+        current_dir().map_err(|e| format!("Failed to read current dir: {}", e.to_string()))?;
+    let dir_name = dir
+        .file_name()
+        .ok_or("Could not get name of current dir")?
+        .to_str()
+        .ok_or("Could not get name of current dir")?;
+    let obc_id = dir_name
+        .strip_prefix("obc")
+        .ok_or("Could not get obc id")?
+        .parse::<u32>()
+        .map_err(|e| e.to_string())?;
 
-    let dir = current_dir().map_err(|e| format!("Failed to read current dir: {}", e.to_string()))?;
-    let dir_name = dir.file_name().ok_or("Could not get name of current dir")?.to_str().ok_or("Could not get name of current dir")?;
+    let conf = confparse::get_conf("tasks.conf", obc_id)?;
+
     // println!("{:?}", conf);
 
     let mut ports_hpp = fs::OpenOptions::new()
@@ -88,7 +99,8 @@ pub fn update_tasks() -> Result<Conf, String> {
 
     ports_hpp
         .write(
-            format!("void syslog(const char*, ...) __attribute__ ((format (printf, 1, 2)));").as_bytes(),
+            format!("void syslog(const char*, ...) __attribute__ ((format (printf, 1, 2)));")
+                .as_bytes(),
         )
         .map_err(|e| e.to_string())?;
 
@@ -178,6 +190,9 @@ fn precompilation() -> io::Result<HashMap<u32, Conf>> {
                 continue;
             };
             let Some(obc_id_str) = last_component.strip_prefix("obc") else {
+                if last_component.starts_with("rtos") {
+                    continue;
+                }
                 println!("Non obc folder found: {path:?}");
                 continue;
             };
@@ -294,7 +309,7 @@ pub fn compile() -> Result<(), String> {
         syslog_impl = syslog_impl.replace("OBCID", &obc_id.to_string());
 
         ports_cpp
-            .write(format!("{}\n",syslog_impl).as_bytes())
+            .write(format!("{}\n", syslog_impl).as_bytes())
             .map_err(|e| e.to_string())?;
 
         let mut ports_used = conf.outports.clone();

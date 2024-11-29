@@ -13,7 +13,7 @@ impl Debug for BitMap {
             hm.insert(i, self.get(i));
             hm
         });
-        write!(f, "BitMap {{ {:?} }}", hm)
+        write!(f, "BitMap {{ {:?} }} val: {:?}", hm, self.map)
     }
 }
 
@@ -23,10 +23,12 @@ impl BitMap {
     }
     
     pub fn get(&self, index: u8) -> bool {
-        self.map & (1 << index) == 1
+        self.map & (1 << index) == (1 << index)
     }
 
     pub fn set(&mut self, index: u8, val: bool) {
+        // println!("index: {:?}, val: {:?}", index, val);
+        self.map &= !(1 << index);
         self.map |= (val as u128) << index;
     }
 
@@ -82,13 +84,17 @@ fn task_schedule_rec(
     sensors_to_int: &HashMap<Arc<str>, u8>,
     sensors_used: BitMap,
 ) -> BitMap {
-    // println!("index: {:?}, sensors_used: {:?}", index, sensors_used);
+    println!("index: {:?}, sensors_used: {:?}, sensors_to_int: {:?}", index, sensors_used, sensors_to_int);
     if sensors_used.is_filled(sensors_to_int.len() as u8) {
         return BitMap { map: 0 };
     }
     let Some((task, _)) = tasks.get(index as usize) else {
         return BitMap { map: 0 };
     };
+    // to check if the task is runnable
+    if task.args.iter().any(|f| sensors_used.get(sensors_to_int[f])) {
+        return BitMap { map: 0 };
+    }
     let mut s = sensors_used.clone();
     task.args.iter().for_each(|sensor| {
         let Some(i) = sensors_to_int.get(sensor) else {
@@ -96,11 +102,12 @@ fn task_schedule_rec(
         };
         s.set(*i, true);
     });
-    // println!("task: {:?}", task);
-    // println!("s: {:?}", s);
+    println!("task: {:?}", task);
+    println!("s: {:?}", s);
 
     let mut task_marked = task_schedule_rec(tasks, index + 1, sensors_to_int, s);
     task_marked.set(index, true);
+    println!("task_marked_before: {:?}", task_marked);
 
     let s = sensors_used.clone();
     let task_unmarked = task_schedule_rec(tasks, index + 1, sensors_to_int, s);
@@ -112,7 +119,9 @@ fn task_schedule_rec(
         acc + tasks.get(x as usize).map(|f| f.1).unwrap_or(0)
     });
 
-    if tml > tuml {
+    println!("task_marked: {:?}", task_marked);
+    println!("task_unmarked: {:?}", task_unmarked);
+    if tml >= tuml {
         task_marked
     } else {
         task_unmarked

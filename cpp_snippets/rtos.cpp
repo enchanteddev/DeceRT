@@ -1,11 +1,11 @@
 #include "stdio.h"
 #include <unistd.h>
 #include <stdarg.h>
-
+#include <string>
 
 using namespace std;
-char* sensor_names[] = {SENSOR_NAMES};
-char* port_names[] = {PORT_NAMES};
+string sensor_names[] = {SENSOR_NAMES};
+string port_names[] = {PORT_NAMES};
 
 
 void scheduler();
@@ -19,9 +19,10 @@ void log(const char* buf, va_list va_args) {
     // cout << buf;
 }
 
-void runTask(void (*f)(void*), void* args, int cycles) {
+void runTask(void (*f)(void**), void* args[], int cycles) {
     printf( "Running for : %d cycles.\n", cycles);
     f(args);
+    sleep(cycles);
 }
 
 void delay(int cycles) {

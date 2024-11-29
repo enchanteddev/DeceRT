@@ -40,7 +40,12 @@ pub fn schedule(topology: &HashMap<u32, Conf>) -> Result<SensorJson, String> {
     let sensors = sensorjson.sensors.clone();
     let mut cpus: HashMap<u32, CPU> = topology
         .iter()
-        .map(|entry| (*entry.0, CPU::new(*entry.0, entry.1.tasks.clone())))
+        .map(|(cpu_id, conf)| {
+            (
+                *cpu_id,
+                CPU::new(*cpu_id, conf.tasks.clone(), conf.initial.clone()),
+            )
+        })
         .collect();
 
     let sensors_to_int: HashMap<Arc<str>, u8> = sensors
@@ -56,7 +61,7 @@ pub fn schedule(topology: &HashMap<u32, Conf>) -> Result<SensorJson, String> {
         .map(|(id, _)| (*id, CodeWriter::new()))
         .collect(); // codewriter for each cpu
 
-    let mut task2cpus: HashMap<Task, u32> = HashMap::new(); // task -> cpu_id
+    // let mut task2cpus: HashMap<Task, u32> = HashMap::new(); // task -> cpu_id
     let mut scheduled_tasks: BinaryHeap<(i32, Task)> = BinaryHeap::new(); // currently scheduled tasks
     let mut next_tasks: Vec<(Task, u8)>; // stores the next set of tasks to be scheduled
     let mut pending_tasks: HashMap<Task, u8> = HashMap::new(); // stores the waits of tasks which failed to get scheduled
@@ -67,24 +72,26 @@ pub fn schedule(topology: &HashMap<u32, Conf>) -> Result<SensorJson, String> {
     let mut time = 0;
 
     loop {
-        // println!("Cycle {}", time);
+        println!("Cycle {}", time);
         loop {
-            next_tasks = get_next_tasks(&unutilized_cpus, &mut cpus)
-                .iter()
-                .filter_map(|entry| {
-                    entry.1.as_ref().map(|t| {
-                        task2cpus.insert(t.clone(), *entry.0);
-                        if pending_tasks.contains_key(t) {
-                            (t.clone(), pending_tasks[t] as u8)
-                        } else {
-                            // initially set task-wt to 1
-                            (t.clone(), 1 as u8)
-                        }
-                    })
+            let mut next_tasks_with_runnable_tasks_left: Vec<_> = get_next_tasks(&unutilized_cpus, &mut cpus)
+                .into_iter()
+                .filter_map(|(cpu_id, task)| {
+                    let Some((task, runnable_tasks_left)) = task else {
+                        return None;
+                    };
+                    if pending_tasks.contains_key(&task) {
+                        Some((runnable_tasks_left, (task.clone(), pending_tasks[&task] as u8)))
+                    } else {
+                        // initially set task-wt to 1
+                        Some((runnable_tasks_left, (task, 1 as u8)))
+                    }
                 })
                 .collect();
+            next_tasks_with_runnable_tasks_left.sort();
 
-            // println!("next_tasks: {:?}", next_tasks);
+            next_tasks = next_tasks_with_runnable_tasks_left.into_iter().map(|(_, x)| x).collect();
+            println!("next_tasks: {:?}", next_tasks);
 
             if next_tasks.is_empty() {
                 // reset and continue
@@ -110,7 +117,7 @@ pub fn schedule(topology: &HashMap<u32, Conf>) -> Result<SensorJson, String> {
                     .iter()
                     .for_each(|sensor| sensor_bitmap.set(sensors_to_int[sensor], true));
                 // remove the cpu of these tasks from unutilized
-                unutilized_cpus.remove(&task2cpus[task]);
+                unutilized_cpus.remove(&task.obc_id);
                 scheduled_tasks.push((-(task.cycles as i32), task.clone()));
             }
 
@@ -120,49 +127,61 @@ pub fn schedule(topology: &HashMap<u32, Conf>) -> Result<SensorJson, String> {
                     pending_tasks.insert(task.clone(), weight + 1);
                 }
             });
+            println!("task_currently_scheduled: {:?}", task_currently_scheduled);
+            println!("unutilized_cpus: {:?}", unutilized_cpus);
         }
         // if empty then schduling completed
         if scheduled_tasks.is_empty() {
             break;
         }
 
+        let mut curr_cycle = 0;
         // set requirements satisfied
-        let Some(task_entry) = scheduled_tasks.pop() else {
-            Err("Something bad occured ")?
-        };
-        let task_cpu = cpus
-            .get_mut(&task2cpus[&task_entry.1])
-            .expect("Did not find CPU for id. Impossible!");
-        let curr_task = task_entry.1;
-        // println!("curr_task: {:?}", curr_task);
-        task2cpus.remove(&curr_task); // freeing space
-        unutilized_cpus.insert(task_cpu.id); // added this cpu to unutilized
+        while let Some(task_entry) = scheduled_tasks.pop() {
+            println!("task_entry: {:?}", task_entry);
+            let task_cpu = cpus
+                .get_mut(&task_entry.1.obc_id)
+                .expect("Did not find CPU for id. Impossible!");
+            let curr_task = task_entry.1;
+            println!("curr_task: {:?}", curr_task);
+            // task2cpus.remove(&curr_task); // freeing space
+            unutilized_cpus.insert(task_cpu.id); // added this cpu to unutilized
 
-        // println!("unutilized_cpus: {:?}", unutilized_cpus);
+            // println!("unutilized_cpus: {:?}", unutilized_cpus);
+            curr_cycle = curr_task.cycles;
 
-        // free up the sensors
-        curr_task
-            .args
-            .iter()
-            .for_each(|sensor| sensor_bitmap.set(sensors_to_int[sensor], false));
-        task_cpu.task_complete(&curr_task);
-        task_cpu.reset();
-        time += curr_task.cycles as i32;
-        let Some(codewriter) = cpu_codewriter.get_mut(&task_cpu.id) else {
-            Err("Did not found the codewriter for this cpu")?
-        };
-        // this function written to the code writer
-        codewriter.append(
-            CodeTask::FunctionCall(FunctionCall {
-                fn_identifier: curr_task.name.clone(),
-                cycles: curr_task.cycles,
-                args: curr_task.args.clone(),
-            }),
-            time.into(),
-        );
+            // free up the sensors
+            curr_task
+                .args
+                .iter()
+                .for_each(|sensor| sensor_bitmap.set(sensors_to_int[sensor], false));
+            task_cpu.task_complete(&curr_task);
+            task_cpu.reset();
+            let Some(codewriter) = cpu_codewriter.get_mut(&task_cpu.id) else {
+                Err("Did not found the codewriter for this cpu")?
+            };
+            // this function written to the code writer
+            codewriter.append(
+                CodeTask::FunctionCall(FunctionCall {
+                    fn_identifier: curr_task.name.clone(),
+                    cycles: curr_task.cycles,
+                    args: curr_task.args.clone(),
+                }),
+                time.into(),
+            );
+
+            // break no more tasks are finishing at this timestamp
+            if scheduled_tasks.peek().is_some() {
+                if scheduled_tasks.peek().unwrap().1.cycles != curr_cycle {
+                    break;
+                }
+            }
+        }
+        time += curr_cycle as i32;
     }
+
     for (id, cpu_cw) in cpu_codewriter.iter_mut() {
-        cpu_cw.commit(PathBuf::from(format!("./obc{id}")))?;
+        cpu_cw.commit(PathBuf::from(format!("./obc{id}")), time)?;
     }
     Ok(sensorjson)
 }

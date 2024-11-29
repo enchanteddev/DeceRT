@@ -15,10 +15,10 @@ pub struct CPU {
 }
 
 impl CPU {
-    pub fn new(id: u32, tasks: Vec<Task>) -> Self {
+    pub fn new(id: u32, tasks: Vec<Task>, initials: Vec<Arc<str>>) -> Self {
         let mut runnable_tasks = BinaryHeap::new();
         for task in &tasks {
-            if task.requires.is_empty() {
+            if task.requires.is_empty() || task.requires.iter().all(|req| initials.contains(req)) {
                 runnable_tasks.push((-(task.cycles as i32), task.clone()));
             }
         }
@@ -27,12 +27,13 @@ impl CPU {
             tasks,
             runnable_tasks,
             completed_tasks: HashSet::new(),
-            satisfied: HashSet::new(),
+            satisfied: initials.into_iter().collect(),
         }
     }
 
-    pub fn get_task(&mut self) -> Option<Task> {
-        self.runnable_tasks.pop().map(|(_, task)| task)
+    pub fn get_task(&mut self) -> Option<(Task, usize)> {
+        println!("runnable_tasks: {:?}", self.runnable_tasks);
+        self.runnable_tasks.pop().map(|(_, task)| (task, self.runnable_tasks.len()))
     }
 
     pub fn task_complete(&mut self, task: &Task) {
@@ -56,7 +57,7 @@ impl CPU {
     }
 }
 
-pub fn get_next_tasks(unutilised_cpus: &HashSet<u32>, cpus: &mut HashMap<u32, CPU>) -> HashMap<u32, Option<Task>> {
+pub fn get_next_tasks(unutilised_cpus: &HashSet<u32>, cpus: &mut HashMap<u32, CPU>) -> HashMap<u32, Option<(Task, usize)>> {
     /* returns a HashMap of next tasks for the given list of cpus*/
     unutilised_cpus.into_iter()
         .filter_map(|id| cpus.get_mut(&id).map(|f| (*id, f.get_task())))

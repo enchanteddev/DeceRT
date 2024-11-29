@@ -89,16 +89,7 @@ impl CodeWriter {
     }
     pub fn append(&mut self, task: CodeTask, current_time_ms: i32) {
         /*May add a delay if a delay was started previously */
-        match self.delayed_at {
-            Some(t) => {
-                assert!(t < current_time_ms);
-                self.tasks.push(CodeTask::Delay(Delay {
-                    call_time_ms: current_time_ms - t,
-                }));
-                self.delayed_at = None;
-            }
-            None => {}
-        }
+        self.end_delay(current_time_ms);
         self.tasks.push(task);
     }
     pub fn start_delay(&mut self, current_time_ms: i32) {
@@ -107,18 +98,53 @@ impl CodeWriter {
         Delay will be counted from the first call to this function.
          */
         match self.delayed_at {
-            Some(_) => {}
+            Some(x) => {
+                if current_time_ms < x {
+                    self.delayed_at = Some(current_time_ms);
+                }
+            }
             None => {
                 self.delayed_at = Some(current_time_ms);
             }
         }
     }
 
-    pub fn commit(&mut self, path: PathBuf) -> Result<(), String> {
+    fn end_delay(&mut self, current_time_ms: i32) {
+        match self.delayed_at {
+            Some(t) => {
+                println!("t: {t}, current_time_ms: {current_time_ms}");
+                assert!(t < current_time_ms);
+                self.tasks.push(CodeTask::Delay(Delay {
+                    call_time_ms: current_time_ms - t,
+                }));
+                self.delayed_at = None;
+            }
+            None => {}
+        }
+    }
+
+    pub fn commit(&mut self, path: PathBuf, end_time: i32) -> Result<(), String> {
         /*
         Commits the code to the file.
         Starts writing from the beginning, hence better to run this only at the end
          */
+        let total_time = self.tasks.iter().fold(0, |acc, x| {
+            match x {
+                CodeTask::FunctionCall(t) => acc + t.cycles as i32,
+                CodeTask::Delay(t) => acc + t.call_time_ms,
+            }
+        });
+
+        if total_time > end_time {
+            return Err(format!(
+                "Total time of tasks exceeds the end time. Total time: {total_time}, End time: {end_time}"
+            ));
+        } else if total_time < end_time {
+            println!("total_time: {total_time}, end_time: {end_time}");
+            self.start_delay(total_time);
+            self.end_delay(end_time);
+        }
+
         let task_wrappers = self
             .tasks
             .iter()

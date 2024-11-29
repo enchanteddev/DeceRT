@@ -15,7 +15,8 @@ pub struct Task_ {
     pub args: Vec<Arc<str>>,
     pub requires: Vec<Arc<str>>,
     pub satisfies: Vec<Arc<str>>,
-    pub cycles: u16
+    pub cycles: u16,
+    pub obc_id: u32
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Ord, PartialOrd, Hash)]
@@ -115,13 +116,14 @@ fn parse_conf(tokens: &mut std::slice::Iter<'_, Token>) -> Result<Conf, String> 
     Ok(config)
 }
 
-fn parse_tasks( tokens: &mut std::slice::Iter<'_, Token>) -> Result<Task, String>{
+fn parse_tasks( tokens: &mut std::slice::Iter<'_, Token>, obc_id: u32) -> Result<Task, String>{
     let mut task = Task_{
         name:"".into(),
         args:vec![],
         requires:vec![],
         satisfies:vec![],
-        cycles: 0
+        cycles: 0,
+        obc_id
     };
     // requires
     // Checking manually so if no token the we return NULL
@@ -171,11 +173,11 @@ fn parse_tasks( tokens: &mut std::slice::Iter<'_, Token>) -> Result<Task, String
     Ok(Task(Arc::new(task)))
 }
 
-fn coder(tokens: Vec<Token>) -> Result<Conf, String>{
+fn coder(tokens: Vec<Token>, obc_id: u32) -> Result<Conf, String>{
     let mut tokens_iter: std::slice::Iter<'_, Token> = tokens.iter();
     let mut config = parse_conf(&mut tokens_iter)?;
     loop {
-        let task = match parse_tasks(&mut tokens_iter) {
+        let task = match parse_tasks(&mut tokens_iter, obc_id) {
             Ok(t) => t,
             Err(e) => match e.as_str() {
                 "EMPTY" => {
@@ -191,8 +193,8 @@ fn coder(tokens: Vec<Token>) -> Result<Conf, String>{
     Ok(config)
 
 }
-pub fn get_conf(path: &str) -> Result<Conf, String> {
+pub fn get_conf(path: &str, obc_id: u32) -> Result<Conf, String> {
     let content = read_to_string(path).map_err(|e| e.to_string())?;
     let tokens = parse::parse(&content).map_err(|e| e.to_string())?;
-    coder(tokens)
+    coder(tokens, obc_id)
 }
