@@ -6,8 +6,7 @@
 using namespace std;
 char* sensor_names[] = {SENSOR_NAMES};
 char* port_names[] = {PORT_NAMES};
-// char* sensor_names[] = {};
-// char* port_names[] = {};
+
 
 void scheduler();
 

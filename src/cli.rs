@@ -84,6 +84,12 @@ pub fn update_tasks() -> Result<Conf, String> {
         b"// not to be touched by user\n// will be regenerated to ensure correctness on each build\n",
     ).map_err(|e| e.to_string())?;
 
+    ports_hpp
+        .write(
+            b"void syslog(const char*, ...) __attribute__ ((format (printf, 1, 2)));",
+        )
+        .map_err(|e| e.to_string())?;
+
     for inports in conf.inports.iter() {
         write_input_port(&inports, &mut ports_hpp).map_err(|e| e.to_string())?;
     }
@@ -140,8 +146,7 @@ pub fn update_tasks() -> Result<Conf, String> {
         .truncate(true)
         .open("entry.hpp")
         .map_err(|e| e.to_string())?;
-    
-    
+
     entry_hpp_file
         .write(entry_hpp.as_bytes())
         .map_err(|e| e.to_string())?;
@@ -209,7 +214,12 @@ pub fn compile() -> Result<(), String> {
 
     // sensors
     let sensor_impl_snippet = include_str!("../cpp_snippets/sensor_impl.cpp");
-    let sensor_names = sensors.sensors.iter().enumerate().map(|(i, x)| (x.name.clone(), i as u64)).collect::<HashMap<Arc<str>, u64>>();
+    let sensor_names = sensors
+        .sensors
+        .iter()
+        .enumerate()
+        .map(|(i, x)| (x.name.clone(), i as u64))
+        .collect::<HashMap<Arc<str>, u64>>();
     for (id, sensor) in sensors.sensors.iter().enumerate() {
         let mut sensor_code = sensor_impl_snippet.to_string();
 
@@ -250,7 +260,8 @@ pub fn compile() -> Result<(), String> {
     let port_impl_snippet = include_str!("../cpp_snippets/port_impl.cpp");
     let mut port_names: HashMap<Arc<str>, u64> = HashMap::new();
     let port_impl: HashMap<String, String> = port2obc
-        .iter().enumerate()
+        .iter()
+        .enumerate()
         .map(|(id, (port_name, _))| {
             let mut port_code = port_impl_snippet.to_string();
 
@@ -263,8 +274,7 @@ pub fn compile() -> Result<(), String> {
         .collect();
 
     let root_dir = current_dir().map_err(|e| e.to_string())?;
-    
-    
+
     // creates ports.cpp for each obc file
     for (obc_id, conf) in &topology {
         let mut ports_cpp = fs::OpenOptions::new()
@@ -274,11 +284,13 @@ pub fn compile() -> Result<(), String> {
             .open(root_dir.join(format!("obc{obc_id}")).join("ports.cpp"))
             .map_err(|e| e.to_string())?;
 
-        ports_cpp.write("#include \"rtos.hpp\"\n\n".as_bytes()).map_err(|e| e.to_string())?;
+        ports_cpp
+            .write("#include \"rtos.hpp\"\n\n".as_bytes())
+            .map_err(|e| e.to_string())?;
 
         let mut ports_used = conf.outports.clone();
         ports_used.append(&mut conf.inports.clone());
-        
+
         // all the sensors used by this OBC
         let sensors_used = conf.tasks.iter().flat_map(|x| x.args.clone()).unique();
         for sensor_name in sensors_used {
@@ -305,8 +317,8 @@ pub fn compile() -> Result<(), String> {
     }
 
     match compile_demo_rtos(sensor_names, port_names) {
-        Ok(_) => {},
-        Err(e) => return Err(e.to_string())
+        Ok(_) => {}
+        Err(e) => return Err(e.to_string()),
     }
 
     for (obc_id, _) in &topology {
