@@ -17,9 +17,9 @@ public:
         return instance;
     } 
     void read(char *buffer, int size){
-        r_read(id, buffer, size);
+        sensor_read(id, buffer, size);
     }
     void write(char *buffer, int size){
-        r_write(id, buffer, size);
+        sensor_write(id, buffer, size);
     }
 };
