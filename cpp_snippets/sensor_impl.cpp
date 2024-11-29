@@ -20,6 +20,6 @@ public:
         r_read(id, buffer, size);
     }
     void write(char *buffer, int size){
-        r_write("{NAME}", buffer, size);
+        r_write(id, buffer, size);
     }
 };

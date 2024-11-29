@@ -6,6 +6,6 @@ public:
         r_read({ID}, buffer, size);
     }
     static void write(char *buffer, int size){
-        r_write("{NAME}", buffer, size);
+        r_write({ID}, buffer, size);
     }
 };
