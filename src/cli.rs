@@ -88,7 +88,7 @@ pub fn update_tasks() -> Result<Conf, String> {
 
     ports_hpp
         .write(
-            format!("#define syslog(buf,...) log(\"{dir_name}:\");log(buf,...);").as_bytes(),
+            format!("void syslog(const char*, ...) __attribute__ ((format (printf, 1, 2)));").as_bytes(),
         )
         .map_err(|e| e.to_string())?;
 
@@ -288,6 +288,13 @@ pub fn compile() -> Result<(), String> {
 
         ports_cpp
             .write("#include \"rtos.hpp\"\n\n".as_bytes())
+            .map_err(|e| e.to_string())?;
+        let mut syslog_impl = include_str!("../cpp_snippets/syslog.cpp").to_string();
+
+        syslog_impl = syslog_impl.replace("OBCID", &obc_id.to_string());
+
+        ports_cpp
+            .write(format!("{}\n",syslog_impl).as_bytes())
             .map_err(|e| e.to_string())?;
 
         let mut ports_used = conf.outports.clone();

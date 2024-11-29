@@ -14,9 +14,7 @@ int main() {
     scheduler();
 }
 
-void log(const char* buf, ...) {
-    va_list va_args;
-    va_start(va_args,buf);
+void log(const char* buf, va_list va_args) {
     vprintf(buf, va_args);
     // cout << buf;
 }
