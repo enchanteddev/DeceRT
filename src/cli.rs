@@ -71,6 +71,8 @@ fn get_args_string(args: &Vec<Arc<str>>) -> String {
 pub fn update_tasks() -> Result<Conf, String> {
     let conf = confparse::get_conf("tasks.conf")?;
 
+    let dir = current_dir().map_err(|e| format!("Failed to read current dir: {}", e.to_string()))?;
+    let dir_name = dir.file_name().ok_or("Could not get name of current dir")?.to_str().ok_or("Could not get name of current dir")?;
     // println!("{:?}", conf);
 
     let mut ports_hpp = fs::OpenOptions::new()
@@ -86,7 +88,7 @@ pub fn update_tasks() -> Result<Conf, String> {
 
     ports_hpp
         .write(
-            b"void syslog(const char*, ...) __attribute__ ((format (printf, 1, 2)));",
+            format!("#define syslog(buf,...) log(\"{dir_name}:\");log(buf,...);").as_bytes(),
         )
         .map_err(|e| e.to_string())?;
 
